@@ -32,3 +32,5 @@ workspaces/
 ui/node_modules/
 ui/dist/
 ui/.angular/
+scripts/video/
+scripts/runs.json
