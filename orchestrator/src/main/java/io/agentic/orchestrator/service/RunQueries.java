@@ -8,19 +8,15 @@ import io.agentic.orchestrator.generated.model.ArtifactReport;
 import io.agentic.orchestrator.generated.model.AuditEvent;
 import io.agentic.orchestrator.generated.model.ClarificationReport;
 import io.agentic.orchestrator.generated.model.GateReport;
-import io.agentic.orchestrator.generated.model.Mode;
 import io.agentic.orchestrator.generated.model.NodeReport;
-import io.agentic.orchestrator.generated.model.NodeState;
 import io.agentic.orchestrator.generated.model.NodeView;
 import io.agentic.orchestrator.generated.model.PendingApproval;
 import io.agentic.orchestrator.generated.model.Question;
 import io.agentic.orchestrator.generated.model.RollbackReport;
 import io.agentic.orchestrator.generated.model.RunDetail;
 import io.agentic.orchestrator.generated.model.RunReport;
-import io.agentic.orchestrator.generated.model.RunState;
 import io.agentic.orchestrator.generated.model.RunSummary;
 import io.agentic.orchestrator.generated.model.TokenReport;
-import io.agentic.orchestrator.generated.model.WaitKind;
 import io.agentic.orchestrator.pipeline.StageSpec;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -100,8 +96,8 @@ public class RunQueries {
                     RunSummary summary = new RunSummary(
                             row.id(),
                             row.scenario(),
-                            Mode.fromValue(row.mode()),
-                            RunState.fromValue(row.status()),
+                            RunSummary.ModeEnum.fromValue(row.mode()),
+                            RunSummary.StatusEnum.fromValue(row.status()),
                             row.request(),
                             utc(row.startedAt()));
                     summary.setFinishedAt(utc(row.finishedAt()));
@@ -125,7 +121,7 @@ public class RunQueries {
                     nodeId,
                     stage.agent(),
                     stage.dependsOn(),
-                    NodeState.fromValue(run.nodeStatus(nodeId).name()),
+                    NodeView.StatusEnum.fromValue(run.nodeStatus(nodeId).name()),
                     run.attempt(nodeId));
             view.setFailureReason(run.failureReason(nodeId));
             if (waiting.containsKey(nodeId)) {
@@ -136,8 +132,8 @@ public class RunQueries {
         RunDetail detail = new RunDetail(
                 run.id(),
                 run.request().scenario(),
-                Mode.fromValue(run.mode().name()),
-                RunState.fromValue(run.status().name()),
+                RunDetail.ModeEnum.fromValue(run.mode().name()),
+                RunDetail.StatusEnum.fromValue(run.status().name()),
                 run.request().request(),
                 utc(run.startedAt()),
                 run.branch(),
@@ -158,7 +154,7 @@ public class RunQueries {
                     stage.id(),
                     stage.agent(),
                     stage.dependsOn(),
-                    n == null ? NodeState.PENDING : NodeState.fromValue(n.status()),
+                    n == null ? NodeView.StatusEnum.PENDING : NodeView.StatusEnum.fromValue(n.status()),
                     n == null ? 0 : n.attempt());
             if (n != null) {
                 view.setFailureReason(n.failureReason());
@@ -168,8 +164,8 @@ public class RunQueries {
         RunDetail detail = new RunDetail(
                 row.id(),
                 row.scenario(),
-                Mode.fromValue(row.mode()),
-                RunState.fromValue(row.status()),
+                RunDetail.ModeEnum.fromValue(row.mode()),
+                RunDetail.StatusEnum.fromValue(row.status()),
                 row.request(),
                 utc(row.startedAt()),
                 row.branch(),
@@ -191,7 +187,7 @@ public class RunQueries {
     static PendingApproval pending(Run.Waiting w) {
         PendingApproval approval = new PendingApproval(
                 w.nodeId(),
-                WaitKind.fromValue(w.kind().name()),
+                PendingApproval.KindEnum.fromValue(w.kind().name()),
                 w.reasons(),
                 w.questions().stream().map(q -> new Question(q.id(), q.text())).toList());
         approval.setSince(utc(w.since()));
@@ -223,7 +219,8 @@ public class RunQueries {
         List<NodeReport> nodes = nodes(id).stream()
                 .sorted(Comparator.comparingInt(n -> order.indexOf(n.id())))
                 .map(n -> {
-                    NodeReport report = new NodeReport(n.id(), NodeState.fromValue(n.status()), n.attempt());
+                    NodeReport report =
+                            new NodeReport(n.id(), NodeReport.StatusEnum.fromValue(n.status()), n.attempt());
                     if (n.startedAt() != null && n.finishedAt() != null) {
                         report.setDurationMs(
                                 Duration.between(n.startedAt(), n.finishedAt()).toMillis());
@@ -259,7 +256,7 @@ public class RunQueries {
                     ApprovalReport approval = new ApprovalReport(
                             e.nodeId(), ApprovalReport.DecisionEnum.fromValue((String) p.get("decision")), (String)
                                     p.get("by"));
-                    approval.setKind(WaitKind.fromValue((String) p.get("kind")));
+                    approval.setKind(ApprovalReport.KindEnum.fromValue((String) p.get("kind")));
                     approval.setReason((String) p.get("reason"));
                     approval.setWaitMs(number(p.get("waitMs")));
                     approvals.add(approval);
@@ -300,8 +297,8 @@ public class RunQueries {
         RunReport report = new RunReport(
                 row.id(),
                 row.scenario(),
-                Mode.fromValue(row.mode()),
-                RunState.fromValue(row.status()),
+                RunReport.ModeEnum.fromValue(row.mode()),
+                RunReport.StatusEnum.fromValue(row.status()),
                 utc(row.startedAt()),
                 nodes,
                 gates,

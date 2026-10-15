@@ -55,6 +55,8 @@ management:
     distribution:
       percentiles-histogram:
         http.server.requests: true
+        orchestrator.run: true
+        orchestrator.node: true
   tracing:
     sampling:
       probability: 1.0

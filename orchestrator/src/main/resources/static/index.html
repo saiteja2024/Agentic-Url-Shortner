@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SDLC Orchestrator</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5d6677; --border: #dfe3ea;
+    --accent: #2f5bd3; --accent-text: #ffffff;
+    --pending: #8a93a3; --running: #2f5bd3; --waiting: #b26a00; --done: #1d7a46; --failed: #c0392b; --stale: #7a4fb3;
+    --code: #eef1f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --panel: #1a1f27; --text: #e6e9ef; --muted: #9aa3b2; --border: #2c333f;
+      --accent: #6d8ff0; --accent-text: #0d1118;
+      --pending: #7d8696; --running: #6d8ff0; --waiting: #e3a33b; --done: #4cc27f; --failed: #ef6b5b; --stale: #b28ef0;
+      --code: #232a35;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; }
+  header nav a { color: var(--muted); margin-right: 12px; text-decoration: none; }
+  header nav a:hover { color: var(--accent); }
+  .grow { flex: 1; }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  input, select, textarea { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+  button { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  button.danger { background: var(--failed); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  main { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; padding: 16px; }
+  @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; min-width: 0; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
+  .stack > * + * { margin-top: 16px; }
+  form.start { display: grid; gap: 8px; }
+  form.start textarea { min-height: 70px; resize: vertical; }
+  ul.runs { list-style: none; margin: 0; padding: 0; }
+  ul.runs li { padding: 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+  ul.runs li:hover { border-color: var(--border); }
+  ul.runs li.selected { border-color: var(--accent); }
+  ul.runs small { color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 99px; color: #fff; }
+  .s-PENDING { background: var(--pending); } .s-RUNNING { background: var(--running); } .s-WAITING_APPROVAL { background: var(--waiting); }
+  .s-DONE, .s-SUCCEEDED { background: var(--done); } .s-FAILED { background: var(--failed); } .s-STALE { background: var(--stale); }
+  .s-CANCELLED { background: var(--pending); }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); margin-bottom: 10px; }
+  .meta b { color: var(--text); font-weight: 600; }
+  .dag { width: 100%; overflow-x: auto; }
+  .dag svg { display: block; min-width: 760px; }
+  .dag text { font: 12px system-ui, sans-serif; fill: var(--text); }
+  .dag .sub { font-size: 10.5px; fill: var(--muted); }
+  .dag path { fill: none; stroke: var(--border); stroke-width: 1.6; }
+  .approval { border: 1px solid var(--waiting); border-radius: 8px; padding: 10px; }
+  .approval + .approval { margin-top: 10px; }
+  .approval ul { margin: 6px 0; padding-left: 18px; }
+  .approval .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .approval label { display: block; margin-top: 6px; }
+  .approval input { width: 100%; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabs button { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .tabs button.active { color: var(--text); border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; background: var(--code); padding: 1px 4px; border-radius: 4px; word-break: break-all; }
+  .scroll { max-height: 420px; overflow: auto; }
+  .empty { color: var(--muted); }
+  .toast { position: fixed; bottom: 16px; right: 16px; background: var(--failed); color: #fff; padding: 10px 14px; border-radius: 8px; max-width: 420px; display: none; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .actions input { flex: 1; min-width: 200px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SDLC Orchestrator</h1>
+  <nav>
+    <a href="http://localhost:3000" target="_blank" rel="noopener">Grafana</a>
+    <a href="http://localhost:5080" target="_blank" rel="noopener">OpenObserve</a>
+    <a href="http://localhost:9090" target="_blank" rel="noopener">Prometheus</a>
+    <a href="/swagger-ui/index.html" target="_blank" rel="noopener">API</a>
+  </nav>
+  <span class="grow"></span>
+  <label>Operator <input id="operator" size="10" value="operator"></label>
+  <label>API key <input id="apiKey" type="password" size="16" placeholder="X-API-Key"></label>
+</header>
+
+<main>
+  <div class="stack">
+    <section class="panel">
+      <h2>Start a run</h2>
+      <form class="start" id="startForm">
+        <select id="scenario">
+          <option value="greenfield">Greenfield — new feature</option>
+          <option value="brownfield">Brownfield — change existing code</option>
+          <option value="ambiguous">Ambiguous — needs clarification</option>
+        </select>
+        <textarea id="request"></textarea>
+        <button type="submit">Start run</button>
+      </form>
+    </section>
+    <section class="panel">
+      <h2>Runs</h2>
+      <ul class="runs" id="runs"><li class="empty">No runs yet.</li></ul>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="panel" id="runPanel">
+      <h2>Run</h2>
+      <div id="runEmpty" class="empty">Select or start a run.</div>
+      <div id="runBody" hidden>
+        <div class="meta" id="runMeta"></div>
+        <div class="dag" id="dag"></div>
+        <div class="actions">
+          <select id="replanNode"></select>
+          <input id="replanInput" placeholder="New input for a re-plan (e.g. a revised requirement)">
+          <button class="secondary" id="replanBtn">Re-plan</button>
+          <button class="danger" id="killBtn">Kill switch</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="approvalsPanel" hidden>
+      <h2>Waiting for you</h2>
+      <div id="approvals"></div>
+    </section>
+
+    <section class="panel" id="detailPanel" hidden>
+      <div class="tabs">
+        <button class="active" data-tab="report">Report</button>
+        <button data-tab="events">Audit log</button>
+      </div>
+      <div id="report"></div>
+      <div id="events" class="scroll" hidden></div>
+    </section>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const API = "/api/v1/runs";
+const REQUESTS = {
+  greenfield: "Add click analytics: record clicks with their referrer and report the top N referrers for a link.",
+  brownfield: "Links must support an optional expiry; an expired link must no longer resolve.",
+  ambiguous: "Make the short links better for our marketing team."
+};
+const MODES = { greenfield: "GREENFIELD", brownfield: "BROWNFIELD", ambiguous: "GREENFIELD" };
+const $ = id => document.getElementById(id);
+let selected = null;
+let tab = "report";
+
+function store(key, value) { try { sessionStorage.setItem(key, value); } catch (e) { /* storage may be blocked */ } }
+function load(key) { try { return sessionStorage.getItem(key); } catch (e) { return null; } }
+
+$("apiKey").value = load("apiKey") || "";
+$("operator").value = load("operator") || "operator";
+$("apiKey").addEventListener("change", e => store("apiKey", e.target.value));
+$("operator").addEventListener("change", e => store("operator", e.target.value));
+$("request").value = REQUESTS.greenfield;
+$("scenario").addEventListener("change", e => { $("request").value = REQUESTS[e.target.value]; });
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+function toast(message) {
+  const el = $("toast");
+  el.textContent = message;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 5000);
+}
+async function api(path, options = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (options.method && options.method !== "GET") headers["X-API-Key"] = $("apiKey").value;
+  const response = await fetch(path, { ...options, headers });
+  const text = await response.text();
+  const body = text ? JSON.parse(text) : null;
+  if (!response.ok) throw new Error((body && (body.detail || body.title)) || response.statusText);
+  return body;
+}
+const by = () => $("operator").value || "operator";
+
+$("startForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const scenario = $("scenario").value;
+  try {
+    const run = await api(API, { method: "POST", body: JSON.stringify({ scenario, mode: MODES[scenario], request: $("request").value }) });
+    selected = run.id;
+    refresh();
+  } catch (err) { toast("Start failed: " + err.message); }
+});
+
+$("killBtn").addEventListener("click", async () => {
+  const reason = prompt("Why stop this run?", "stopped by operator");
+  if (!reason) return;
+  try { await api(`${API}/${selected}/kill`, { method: "POST", body: JSON.stringify({ by: by(), reason }) }); refresh(); }
+  catch (err) { toast("Kill failed: " + err.message); }
+});
+
+$("replanBtn").addEventListener("click", async () => {
+  const node = $("replanNode").value;
+  const input = $("replanInput").value.trim();
+  if (!input) { toast("Enter the new input for the re-plan."); return; }
+  try {
+    await api(`${API}/${selected}/nodes/${node}/replan`, { method: "POST", body: JSON.stringify({ by: by(), input }) });
+    $("replanInput").value = "";
+    refresh();
+  } catch (err) { toast("Re-plan failed: " + err.message); }
+});
+
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
+  tab = b.dataset.tab;
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("active", x === b));
+  $("report").hidden = tab !== "report";
+  $("events").hidden = tab !== "events";
+  refresh();
+}));
+
+async function decide(node, action) {
+  try {
+    if (action === "approve") {
+      await api(`${API}/${selected}/nodes/${node}/approve`, { method: "POST", body: JSON.stringify({ by: by() }) });
+    } else if (action === "reject") {
+      const reason = prompt("Reason for rejecting (the node's changes are rolled back):");
+      if (!reason) return;
+      await api(`${API}/${selected}/nodes/${node}/reject`, { method: "POST", body: JSON.stringify({ by: by(), reason }) });
+    } else {
+      const answers = {};
+      document.querySelectorAll(`[data-answer-node="${node}"]`).forEach(input => {
+        if (input.value.trim()) answers[input.dataset.question] = input.value.trim();
+      });
+      await api(`${API}/${selected}/nodes/${node}/answers`, { method: "POST", body: JSON.stringify({ by: by(), answers }) });
+    }
+    refresh();
+  } catch (err) { toast(`${action} failed: ${err.message}`); }
+}
+window.decide = decide;
+
+function renderRuns(runs) {
+  if (!runs.length) { $("runs").innerHTML = '<li class="empty">No runs yet.</li>'; return; }
+  $("runs").innerHTML = runs.map(r => `
+    <li class="${r.id === selected ? "selected" : ""}" onclick="selectRun('${r.id}')">
+      <span class="pill s-${r.status}">${r.status}</span> <b>${esc(r.scenario)}</b>
+      <small>${esc(r.request)}</small>
+      <small>${new Date(r.startedAt).toLocaleTimeString()} · ${r.id.slice(0, 8)}</small>
+    </li>`).join("");
+}
+window.selectRun = id => { selected = id; refresh(); };
+
+/** Lays nodes out in columns by dependency depth; draws edges as curves. */
+function renderDag(run) {
+  const depth = {};
+  const byId = Object.fromEntries(run.nodes.map(n => [n.id, n]));
+  const level = id => depth[id] ?? (depth[id] = byId[id].dependsOn.length ? 1 + Math.max(...byId[id].dependsOn.map(level)) : 0);
+  run.nodes.forEach(n => level(n.id));
+  const columns = [];
+  run.nodes.forEach(n => (columns[depth[n.id]] ||= []).push(n));
+  const W = 140, H = 54, GX = 46, GY = 22, PAD = 12;
+  const pos = {};
+  columns.forEach((col, x) => col.forEach((n, y) => { pos[n.id] = { x: PAD + x * (W + GX), y: PAD + y * (H + GY) }; }));
+  const width = PAD * 2 + columns.length * (W + GX) - GX;
+  const height = PAD * 2 + Math.max(...columns.map(c => c.length)) * (H + GY) - GY;
+  const edges = run.nodes.flatMap(n => n.dependsOn.map(d => {
+    const a = pos[d], b = pos[n.id];
+    const x1 = a.x + W, y1 = a.y + H / 2, x2 = b.x, y2 = b.y + H / 2, mx = (x1 + x2) / 2;
+    return `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"/>`;
+  })).join("");
+  const color = s => `var(--${{ PENDING: "pending", RUNNING: "running", WAITING_APPROVAL: "waiting", DONE: "done", FAILED: "failed", STALE: "stale" }[s]})`;
+  const nodes = run.nodes.map(n => {
+    const p = pos[n.id];
+    const label = n.status === "WAITING_APPROVAL" ? (n.waiting ? n.waiting.kind.toLowerCase() : "waiting") : n.status.toLowerCase();
+    return `<g><title>${esc(n.agent)}${n.failureReason ? "\n" + esc(n.failureReason) : ""}</title>
+      <rect x="${p.x}" y="${p.y}" width="${W}" height="${H}" rx="8" fill="var(--panel)" stroke="${color(n.status)}" stroke-width="2.5"/>
+      <rect x="${p.x}" y="${p.y}" width="6" height="${H}" rx="3" fill="${color(n.status)}"/>
+      <text x="${p.x + 14}" y="${p.y + 22}">${esc(n.id)}</text>
+      <text class="sub" x="${p.x + 14}" y="${p.y + 40}">${label}${n.attempt > 1 ? " · attempt " + n.attempt : ""}</text></g>`;
+  }).join("");
+  $("dag").innerHTML = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Run DAG">${edges}${nodes}</svg>`;
+}
+
+let approvalsKey = "";
+function renderApprovals(run) {
+  const waiting = run.nodes.filter(n => n.waiting);
+  $("approvalsPanel").hidden = !waiting.length;
+  // Re-render only when what is waiting changes, so typed answers survive the 2 s refresh.
+  const key = run.id + "|" + waiting.map(n => n.id + ":" + n.waiting.kind + ":" + n.attempt).join(",");
+  if (key === approvalsKey) return;
+  approvalsKey = key;
+  $("approvals").innerHTML = waiting.map(n => {
+    const w = n.waiting;
+    const questions = w.questions.map(q => `<label>${esc(q.id)}: ${esc(q.text)}
+        <input data-answer-node="${n.id}" data-question="${esc(q.id)}" placeholder="Leave empty to record an assumption"></label>`).join("");
+    const buttons = w.kind === "CLARIFICATION"
+      ? `<button onclick="decide('${n.id}','answers')">Submit answers</button>`
+      : `<button onclick="decide('${n.id}','approve')">Approve</button><button class="danger" onclick="decide('${n.id}','reject')">Reject</button>`;
+    return `<div class="approval"><b>${esc(n.id)}</b> <span class="pill s-WAITING_APPROVAL">${w.kind}</span>
+      <ul>${w.reasons.map(r => `<li>${esc(r)}</li>`).join("")}</ul>${questions}<div class="row">${buttons}</div></div>`;
+  }).join("");
+}
+
+function renderReport(r) {
+  const rows = (items, cols) => items.length
+    ? `<table><tr>${cols.map(c => `<th>${c[0]}</th>`).join("")}</tr>${items.map(i => `<tr>${cols.map(c => `<td>${c[1](i)}</td>`).join("")}</tr>`).join("")}</table>`
+    : '<p class="empty">None.</p>';
+  $("report").innerHTML = `
+    <div class="meta"><span>Status <b>${r.status}</b></span><span>Duration <b>${r.durationMs != null ? (r.durationMs / 1000).toFixed(1) + " s" : "—"}</b></span>
+      <span>Retries <b>${r.retries}</b></span><span>Rollbacks <b>${r.rollbacks.length}</b></span>
+      <span>Tokens <b>${r.tokens.input + r.tokens.output}</b> / ${r.tokens.budget}</span>${r.stopReason ? `<span>Stopped: <b>${esc(r.stopReason)}</b></span>` : ""}</div>
+    <h2>Nodes</h2>${rows(r.nodes, [["Node", n => esc(n.id)], ["Status", n => `<span class="pill s-${n.status}">${n.status}</span>`], ["Attempts", n => n.attempts], ["Duration", n => n.durationMs != null ? (n.durationMs / 1000).toFixed(1) + " s" : ""], ["Failure", n => esc(n.failureReason || "")]])}
+    <h2>Gates</h2>${rows(r.gates, [["Node", g => esc(g.nodeId)], ["Gate", g => esc(g.gate)], ["Attempt", g => g.attempt ?? ""], ["Outcome", g => g.outcome], ["Detail", g => `<code>${esc((g.reason || "").slice(0, 300))}</code>`]])}
+    <h2>Approvals</h2>${rows(r.approvals, [["Node", a => esc(a.nodeId)], ["Kind", a => a.kind || ""], ["Decision", a => a.decision], ["By", a => esc(a.by)], ["Waited", a => a.waitMs != null ? (a.waitMs / 1000).toFixed(1) + " s" : ""], ["Reason", a => esc(a.reason || "")]])}
+    <h2>Clarifications &amp; assumptions</h2>${rows(r.clarifications, [["Q", c => esc(c.questionId)], ["Question", c => esc(c.question)], ["Answer / assumption", c => esc(c.answer || c.assumption || "")]])}
+    <h2>Rollbacks</h2>${rows(r.rollbacks, [["Node", x => esc(x.nodeId)], ["Checkpoint", x => `<code>${esc(x.checkpoint.slice(0, 12))}</code>`], ["Reason", x => esc(x.reason || "")]])}
+    <h2>Artifacts (lineage)</h2>${rows(r.artifacts, [["Node", a => esc(a.nodeId)], ["Name", a => esc(a.name)], ["SHA-256", a => `<code>${a.contentHash.slice(0, 16)}</code>`], ["Parents", a => a.parentHashes.map(h => `<code>${h.slice(0, 8)}</code>`).join(" ")]])}`;
+}
+
+function renderEvents(events) {
+  $("events").innerHTML = `<table><tr><th>#</th><th>Time</th><th>Node</th><th>Event</th><th>Change</th><th>Payload</th></tr>${events.map(e => `
+    <tr><td>${e.seq}</td><td>${new Date(e.at).toLocaleTimeString()}</td><td>${esc(e.nodeId || "")}</td><td>${esc(e.type)}</td>
+      <td>${e.from || e.to ? esc((e.from || "") + " → " + (e.to || "")) : ""}</td><td><code>${esc(JSON.stringify(e.payload).slice(0, 220))}</code></td></tr>`).join("")}</table>`;
+}
+
+async function refresh() {
+  try {
+    renderRuns(await api(API));
+    if (!selected) return;
+    const run = await api(`${API}/${selected}`);
+    $("runEmpty").hidden = true;
+    $("runBody").hidden = false;
+    $("detailPanel").hidden = false;
+    $("runMeta").innerHTML = `<span><span class="pill s-${run.status}">${run.status}</span></span><span>Scenario <b>${esc(run.scenario)}</b></span>
+      <span>Mode <b>${run.mode}</b></span><span>Branch <span class="mono">${esc(run.branch)}</span></span>
+      ${run.stopReason ? `<span>Stopped: <b>${esc(run.stopReason)}</b></span>` : ""}`;
+    $("killBtn").disabled = run.status !== "RUNNING";
+    $("replanBtn").disabled = run.status === "RUNNING";
+    const current = $("replanNode").value;
+    $("replanNode").innerHTML = run.nodes.map(n => `<option ${n.id === current ? "selected" : ""}>${esc(n.id)}</option>`).join("");
+    renderDag(run);
+    renderApprovals(run);
+    if (tab === "report") renderReport(await api(`${API}/${selected}/report`));
+    else renderEvents(await api(`${API}/${selected}/events`));
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

@@ -1,2 +1,39 @@
-# Alert rules are defined in the Dashboards task; an empty group keeps Prometheus config valid.
-groups: []
+# OBS-006: alert rules. Validate with: docker compose exec prometheus promtool check rules /etc/prometheus/alerts.yml
+groups:
+  - name: agentic-sdlc
+    rules:
+      - alert: OrchestratorRunSuccessRateLow
+        # Ignores cancelled runs (kill switch / budgets) and needs a minimum sample to avoid noise.
+        expr: |
+          (
+            sum(increase(orchestrator_runs_completed_total{status="SUCCEEDED"}[1h]))
+            / clamp_min(sum(increase(orchestrator_runs_completed_total{status=~"SUCCEEDED|FAILED"}[1h])), 1)
+          ) < 0.8
+          and sum(increase(orchestrator_runs_completed_total{status=~"SUCCEEDED|FAILED"}[1h])) >= 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Run success rate below 80% over the last hour"
+          description: "{{ $value | humanizePercentage }} of runs succeeded. Check the Governance dashboard for failing gates."
+
+      - alert: OrchestratorRollbackSpike
+        expr: sum(increase(orchestrator_rollbacks_total[15m])) > 2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 2 rollbacks in 15 minutes"
+          description: "Agents keep exhausting retries ({{ $value }} rollbacks). Escalations are waiting for a human."
+
+      - alert: ServiceP95LatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, application) (rate(http_server_requests_seconds_bucket{uri!~"/actuator.*"}[5m]))
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "p95 HTTP latency above 500 ms on {{ $labels.application }}"
+          description: "p95 is {{ $value | humanizeDuration }} over 5 minutes."

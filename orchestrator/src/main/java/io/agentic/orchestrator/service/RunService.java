@@ -47,6 +47,13 @@ public class RunService implements SmartLifecycle {
         this.pipeline = pipeline;
         this.recorder = recorder;
         this.properties = properties;
+        // Register outcome counters at zero so Prometheus increase() and the success-rate alert work
+        // from the first run (a series that appears mid-window has no starting point).
+        for (RunStatus outcome : RunStatus.values()) {
+            if (outcome != RunStatus.RUNNING) {
+                meters.counter("orchestrator.runs.completed", "status", outcome.name());
+            }
+        }
         Gauge.builder("orchestrator.runs.active", runs, r -> r.values().stream()
                         .filter(run -> run.status() == RunStatus.RUNNING)
                         .count())

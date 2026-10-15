@@ -160,6 +160,10 @@ approve before implementation.
   `shortener/pom.xml` map those names back to the component models, so every machine gets
   the same types. A new array-of-`$ref` needs a new mapping, and CI fails at compile time if
   one is missing.
+- The same path-dependent dereferencing turned `$ref`s to shared **enum** schemas into per-class
+  inline enums on CI only. The orchestrator spec therefore declares enums inline at each use, so
+  every checkout generates the same per-class `…Enum` types. Before pushing a spec change, run a
+  clean build from a checkout path without spaces as well.
 
 **Rejected: code-first springdoc.** Generating the spec from annotations means the spec
 trails the code. Nobody reviews the contract before it's built, breaking changes surface

@@ -236,6 +236,16 @@ Status: Implemented
 - **When** `GET /api/v1/runs/{id}/events` is called
 - **Then** it returns the run's events from `orchestrator.events` in sequence order
 
+## UI
+
+### ORCH-050 — Operator console
+Status: Implemented
+
+- **Given** the orchestrator at `http://localhost:8080/`
+- **Then** a single page lists runs, starts a run, and shows the selected run's DAG with live node statuses (refreshed every 2 s)
+- **And** it lets a human approve, reject, answer clarifying questions, kill the run and re-plan a node — all through the public API with the operator's API key
+- **And** it shows the run's audit log and report, with links to Grafana, OpenObserve, Prometheus and Swagger UI
+
 ---
 
 ## Data model

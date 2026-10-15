@@ -329,18 +329,8 @@ components:
         pattern: '^[a-z][a-z0-9-]{0,63}$'
 
   schemas:
-    Mode:
-      type: string
-      enum: [GREENFIELD, BROWNFIELD]
-    RunState:
-      type: string
-      enum: [RUNNING, SUCCEEDED, FAILED, CANCELLED]
-    NodeState:
-      type: string
-      enum: [PENDING, RUNNING, WAITING_APPROVAL, DONE, FAILED, STALE]
-    WaitKind:
-      type: string
-      enum: [APPROVAL, ESCALATION, CLARIFICATION]
+    # Enums are declared inline at each use: the generator's 3.1 support dereferences shared
+    # enum $refs differently per checkout path, which changed generated types (see ADR-005).
 
     StartRunRequest:
       type: object
@@ -353,7 +343,8 @@ components:
           description: Recorded-response set for the mock LLM (e.g. greenfield, brownfield, ambiguous).
           examples: [greenfield]
         mode:
-          $ref: '#/components/schemas/Mode'
+          type: string
+          enum: [GREENFIELD, BROWNFIELD]
         request:
           type: string
           minLength: 1
@@ -448,9 +439,11 @@ components:
         scenario:
           type: string
         mode:
-          $ref: '#/components/schemas/Mode'
+          type: string
+          enum: [GREENFIELD, BROWNFIELD]
         status:
-          $ref: '#/components/schemas/RunState'
+          type: string
+          enum: [RUNNING, SUCCEEDED, FAILED, CANCELLED]
         request:
           type: string
         startedAt:
@@ -473,9 +466,11 @@ components:
         scenario:
           type: string
         mode:
-          $ref: '#/components/schemas/Mode'
+          type: string
+          enum: [GREENFIELD, BROWNFIELD]
         status:
-          $ref: '#/components/schemas/RunState'
+          type: string
+          enum: [RUNNING, SUCCEEDED, FAILED, CANCELLED]
         request:
           type: string
         startedAt:
@@ -508,7 +503,8 @@ components:
           items:
             type: string
         status:
-          $ref: '#/components/schemas/NodeState'
+          type: string
+          enum: [PENDING, RUNNING, WAITING_APPROVAL, DONE, FAILED, STALE]
         attempt:
           type: integer
           minimum: 0
@@ -525,7 +521,8 @@ components:
         nodeId:
           type: string
         kind:
-          $ref: '#/components/schemas/WaitKind'
+          type: string
+          enum: [APPROVAL, ESCALATION, CLARIFICATION]
         reasons:
           type: array
           items:
@@ -584,9 +581,11 @@ components:
         scenario:
           type: string
         mode:
-          $ref: '#/components/schemas/Mode'
+          type: string
+          enum: [GREENFIELD, BROWNFIELD]
         status:
-          $ref: '#/components/schemas/RunState'
+          type: string
+          enum: [RUNNING, SUCCEEDED, FAILED, CANCELLED]
         request:
           type: string
         branch:
@@ -640,7 +639,8 @@ components:
         id:
           type: string
         status:
-          $ref: '#/components/schemas/NodeState'
+          type: string
+          enum: [PENDING, RUNNING, WAITING_APPROVAL, DONE, FAILED, STALE]
         attempts:
           type: integer
           minimum: 0
@@ -677,7 +677,8 @@ components:
         nodeId:
           type: string
         kind:
-          $ref: '#/components/schemas/WaitKind'
+          type: string
+          enum: [APPROVAL, ESCALATION, CLARIFICATION]
         decision:
           type: string
           enum: [APPROVED, REJECTED, ANSWERED, CANCELLED]

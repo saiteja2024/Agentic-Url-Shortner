@@ -32,6 +32,20 @@ Status: Implemented
 - **Given** `docker compose up`
 - **Then** Grafana has a Prometheus datasource (uid `prometheus`) and loads dashboards from `observability/grafana/dashboards` without any manual step
 
+### OBS-005 — Three provisioned dashboards
+Status: Implemented
+
+- **Given** Grafana
+- **Then** it shows **Orchestrator Overview** (success rate, active runs, run/node duration p95, MTTR, tokens), **Governance** (retries, rollbacks, gate failures, approval waits and decisions) and **Service Health** (request rate, p95 latency, 5xx ratio, shortener business metrics, JVM and DB pool) — exported as JSON in `observability/grafana/dashboards`
+- **And** every query uses the Prometheus datasource and metrics the services actually expose
+
+### OBS-006 — Alert rules
+Status: Implemented
+
+- **Given** Prometheus
+- **Then** three rules are loaded from `observability/prometheus/alerts.yml`: run success rate below 80 % (over at least 3 runs in 1 h), more than 2 rollbacks in 15 min, and HTTP p95 latency above 500 ms for 5 min
+- **And** each rule has a severity label and a summary annotation
+
 ## Assumptions
 
 | # | Assumption | Rationale |
