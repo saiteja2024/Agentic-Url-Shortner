@@ -121,6 +121,14 @@
                         <generateApiDocumentation>false</generateApiDocumentation>
                         <generateModelDocumentation>false</generateModelDocumentation>
                         <generateSupportingFiles>false</generateSupportingFiles>
+                        <!--
+                          format: uri stays a String: Bean Validation @Size does not apply to
+                          java.net.URI, and URL safety checks need the raw, unparsed input.
+                        -->
+                        <typeMappings>
+                            <typeMapping>string+uri=String</typeMapping>
+                            <typeMapping>string+uri-reference=String</typeMapping>
+                        </typeMappings>
                         <configOptions>
                             <interfaceOnly>true</interfaceOnly>
                             <useSpringBoot3>true</useSpringBoot3>

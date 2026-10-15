@@ -2,6 +2,8 @@ package io.agentic.shortener.contract;
 
 import com.atlassian.oai.validator.OpenApiInteractionValidator;
 import com.atlassian.oai.validator.mockmvc.OpenApiValidationMatchers;
+import com.atlassian.oai.validator.report.LevelResolver;
+import com.atlassian.oai.validator.report.ValidationReport;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -25,6 +27,14 @@ public final class OpenApiContract {
             .createForInlineApiSpecification(loadSpec())
             .build();
 
+    /** Same contract, request checks off: for tests that send deliberately invalid requests. */
+    private static final OpenApiInteractionValidator RESPONSE_ONLY_VALIDATOR =
+            OpenApiInteractionValidator.createForInlineApiSpecification(loadSpec())
+                    .withLevelResolver(LevelResolver.create()
+                            .withLevel("validation.request", ValidationReport.Level.IGNORE)
+                            .build())
+                    .build();
+
     private OpenApiContract() {}
 
     public static OpenApiInteractionValidator validator() {
@@ -34,6 +44,11 @@ public final class OpenApiContract {
     /** Fails the test if the request or the response deviates from the OpenAPI contract. */
     public static ResultMatcher conformsToSpec() {
         return OpenApiValidationMatchers.openApi().isValid(VALIDATOR);
+    }
+
+    /** Fails the test if the response deviates from the contract; the request may be invalid on purpose. */
+    public static ResultMatcher responseConformsToSpec() {
+        return OpenApiValidationMatchers.openApi().isValid(RESPONSE_ONLY_VALIDATOR);
     }
 
     private static String loadSpec() {

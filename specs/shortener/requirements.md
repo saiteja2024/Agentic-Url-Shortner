@@ -13,7 +13,7 @@ Conventions used in the criteria:
 ## Create
 
 ### SHORT-001 — Create a short URL with a generated code
-Status: Planned
+Status: Implemented
 
 - **Given** a valid absolute `https://` or `http://` URL
 - **When** a client sends `POST /api/v1/urls` with `{"url": "<url>"}`
@@ -22,7 +22,7 @@ Status: Planned
 - **And** the `Location` header points to the stats resource `/api/v1/urls/{code}/stats`
 
 ### SHORT-002 — Retry on code collision
-Status: Planned
+Status: Implemented
 
 - **Given** the generated code already exists in the store
 - **When** a URL is created
@@ -32,7 +32,7 @@ Status: Planned
 - **Then** the response is `503 Service Unavailable` ProblemDetail and the failure is logged and counted as a metric
 
 ### SHORT-003 — Custom alias
-Status: Planned
+Status: Implemented
 
 - **Given** a request with `"alias": "my-link"` matching `^[A-Za-z0-9_-]{3,32}$`
 - **When** the URL is created
@@ -43,7 +43,7 @@ Status: Planned
 - **Then** the response is `400 Bad Request` ProblemDetail naming the `alias` field
 
 ### SHORT-004 — Optional expiry
-Status: Planned
+Status: Implemented
 
 - **Given** a request with `"expiresAt"` as an ISO-8601 timestamp in the future
 - **When** the URL is created
@@ -54,7 +54,7 @@ Status: Planned
 - **Then** the link never expires and `expiresAt` is omitted from responses
 
 ### SHORT-005 — Concurrent creates are safe
-Status: Planned
+Status: Implemented
 
 - **Given** 50 concurrent `POST /api/v1/urls` requests (mixed generated codes and distinct aliases)
 - **When** they complete
@@ -65,7 +65,7 @@ Status: Planned
 ## Redirect
 
 ### SHORT-006 — Redirect to the long URL
-Status: Planned
+Status: Implemented
 
 - **Given** an existing, unexpired code
 - **When** a client sends `GET /{code}`
@@ -73,7 +73,7 @@ Status: Planned
 - **And** `Cache-Control: no-store` is set, so every visit reaches the service and is counted
 
 ### SHORT-007 — Record each click with its referrer
-Status: Planned
+Status: Implemented
 
 - **Given** an existing, unexpired code
 - **When** `GET /{code}` is served
@@ -81,14 +81,14 @@ Status: Planned
 - **And** a failure to record the click does not fail the redirect (it is logged and counted)
 
 ### SHORT-008 — Unknown code
-Status: Planned
+Status: Implemented
 
 - **Given** a code that does not exist
 - **When** `GET /{code}` or `GET /api/v1/urls/{code}/stats` is requested
 - **Then** the response is `404 Not Found` ProblemDetail and no click is recorded
 
 ### SHORT-009 — Expired link
-Status: Planned
+Status: Implemented
 
 - **Given** a code whose `expiresAt` is in the past
 - **When** `GET /{code}` is requested
@@ -97,12 +97,13 @@ Status: Planned
 ## Stats
 
 ### SHORT-010 — Link statistics
-Status: Planned
+Status: Implemented
 
 - **Given** an existing code (expired or not)
 - **When** a client sends `GET /api/v1/urls/{code}/stats`
 - **Then** the response is `200 OK` with `code`, `longUrl`, `createdAt`, `expiresAt` (if set), `expired`, `totalClicks`, `lastClickedAt` (if any) and `topReferrers`
 - **And** `topReferrers` lists up to 10 referrers ordered by click count descending, with clicks without a referrer grouped as `"(direct)"`
+- **And** all figures come from one consistent snapshot: a click recorded while the stats are being read is either counted in every figure or in none (when there are ≤ 10 referrers, `totalClicks` equals the sum of `topReferrers[].clicks`)
 
 ## URL validation (SSRF / abuse guardrails)
 
@@ -110,7 +111,7 @@ All of the following reject the request with `400 Bad Request` ProblemDetail who
 `errors[]` names the `url` field, and nothing is persisted.
 
 ### SHORT-011 — Only http(s) absolute URLs
-Status: Planned
+Status: Implemented
 
 - **Given** a URL that is not absolute, or whose scheme is not `http`/`https` (e.g. `javascript:`, `file:`, `ftp:`, `data:`)
 - **When** it is submitted
@@ -119,14 +120,14 @@ Status: Planned
 - **Then** it is rejected with `400`
 
 ### SHORT-012 — Block localhost and loopback
-Status: Planned
+Status: Implemented
 
 - **Given** a URL whose host is `localhost`, `*.localhost`, `127.0.0.0/8`, `::1`, or `0.0.0.0`
 - **When** it is submitted
 - **Then** it is rejected with `400`
 
 ### SHORT-013 — Block private and link-local addresses
-Status: Planned
+Status: Implemented
 
 - **Given** a URL whose host is, or resolves to, an address in `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `100.64.0.0/10`, `169.254.0.0/16`, `fc00::/7` or `fe80::/10`
 - **When** it is submitted
@@ -134,34 +135,57 @@ Status: Planned
 - **And** alternative IP notations (decimal `http://2130706433`, octal, hex, IPv4-mapped IPv6) are normalised before the check
 
 ### SHORT-014 — Block cloud metadata endpoints
-Status: Planned
+Status: Implemented
 
 - **Given** a URL whose host is `169.254.169.254`, `fd00:ec2::254`, `metadata.google.internal`, or `metadata.azure.com`
 - **When** it is submitted
 - **Then** it is rejected with `400`
 
 ### SHORT-015 — Request shape validation
-Status: Planned
+Status: Implemented
 
 - **Given** a body with `url` missing, blank, or longer than 2048 characters, or malformed JSON
 - **When** it is submitted
 - **Then** the response is `400 Bad Request` ProblemDetail with an `errors[]` entry per invalid field
+- **Given** a body with a field of the wrong JSON type (e.g. `"alias": true`, `"url": 123`), an unknown field, or trailing content after the JSON object (`{…} {}`)
+- **Then** it is rejected with `400` and nothing is persisted — values are never coerced between JSON types
 
 ## Cross-cutting
 
 ### SHORT-016 — Uniform RFC 9457 errors
-Status: Planned
+Status: Implemented
 
 - **Given** any 4xx or 5xx response from the API
 - **Then** it has `Content-Type: application/problem+json` and a body matching the `ProblemDetail` schema
 - **And** 5xx responses never expose stack traces or internal exception messages
 
 ### SHORT-017 — Responses conform to the OpenAPI contract
-Status: Planned
+Status: Implemented
 
 - **Given** the MockMvc test suite
 - **When** any request is exercised against `/api/v1/**` or `/{code}`
 - **Then** request and response are validated against `openapi.yaml` and any mismatch fails the test
+
+---
+
+## Data model
+
+Postgres schema `shortener`, owned by Flyway (`shortener/src/main/resources/db/migration`).
+Schema changes require human approval (`specs/orchestrator/pipeline.yaml` → `approvalPolicy`).
+
+| Table | Column | Type | Notes |
+|---|---|---|---|
+| `urls` | `id` | `bigint` identity | Primary key |
+| | `code` | `varchar(32)` | **Unique**; generated code or alias. The unique index is what makes collision retry (SHORT-002) and alias races (SHORT-005) safe |
+| | `long_url` | `varchar(2048)` | As submitted, after validation |
+| | `created_at` | `timestamptz` | Set by the service clock |
+| | `expires_at` | `timestamptz` null | Null = never expires; must be after `created_at` (check constraint) |
+| `clicks` | `id` | `bigint` identity | Primary key |
+| | `url_id` | `bigint` | FK → `urls.id`, `ON DELETE CASCADE` |
+| | `clicked_at` | `timestamptz` | |
+| | `referrer` | `varchar(2048)` null | Null = direct visit, reported as `(direct)` |
+
+Index `clicks (url_id, clicked_at)` serves the stats queries (SHORT-010).
 
 ---
 
@@ -183,7 +207,7 @@ Status: Planned
 
 | # | Question | Default until answered |
 |---|---|---|
-| Q1 | Who may create links — anonymous, API-key holders, or authenticated users? Is per-client rate limiting required? | A5: anonymous, no rate limit |
+| Q1 | Who may create links — anonymous, API-key holders, or authenticated users? Is per-client rate limiting required? | A5: anonymous, no rate limit (defaults Q1–Q6 confirmed for the prototype, 2026-10-15) |
 | Q2 | Should known-malicious domains (Safe Browsing / blocklists) be rejected? | Not checked |
 | Q3 | Must redirects re-validate the target at redirect time (DNS rebinding)? | Validated only at creation (A3) |
 | Q4 | Is `302` correct, or should permanent links use `301`/`308` (better for SEO, worse for analytics because browsers cache)? | `302` for every link |

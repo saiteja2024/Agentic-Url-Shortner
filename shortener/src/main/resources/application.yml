@@ -5,8 +5,37 @@ server:
 spring:
   application:
     name: shortener
+  # Running from the repo root or the module dir, pick up the same .env docker-compose uses.
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:agentic}
+    username: ${POSTGRES_USER:agentic}
+    password: ${POSTGRES_PASSWORD:}
+  flyway:
+    schemas: shortener
+    default-schema: shortener
+    create-schemas: true
+  jackson:
+    # Optional fields are omitted, never null (the OpenAPI 3.1 contract has no nullable types).
+    default-property-inclusion: non_null
+    deserialization:
+      # The contract declares additionalProperties: false; unknown fields are a 400, not ignored.
+      fail-on-unknown-properties: true
+      # `{...} {}` is malformed JSON, not "the first object" (SHORT-015).
+      fail-on-trailing-tokens: true
+  mvc:
+    problemdetails:
+      enabled: true
+
+shortener:
+  # Public base for shortUrl in responses.
+  base-url: ${SHORTENER_BASE_URL:http://localhost:${server.port}}
+  code-length: 7
+  max-create-attempts: 5
+  reserved-aliases: api, actuator, swagger-ui, v3, openapi, health, error
 
 management:
   endpoints:

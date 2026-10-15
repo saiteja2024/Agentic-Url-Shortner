@@ -154,6 +154,12 @@ approve before implementation.
 - The OpenAPI 3.1 parser can't resolve file paths containing spaces, so the build passes
   the spec as a percent-encoded `file://` URI (`${specs.uri}`, computed by
   build-helper), and tests load the spec as inline content.
+- The generator's OpenAPI 3.1 support is beta. On some checkout paths it dereferences
+  `items: $ref` and emits duplicate `<Parent>_<prop>_inner` models. CI caught this:
+  `UrlStatsTopReferrersInner` appeared there but not locally. `schemaMappings` in
+  `shortener/pom.xml` map those names back to the component models, so every machine gets
+  the same types. A new array-of-`$ref` needs a new mapping, and CI fails at compile time if
+  one is missing.
 
 **Rejected: code-first springdoc.** Generating the spec from annotations means the spec
 trails the code. Nobody reviews the contract before it's built, breaking changes surface
@@ -172,3 +178,50 @@ permissions are read-only by default, and jobs widen them only where needed.
 
 **Consequences.** SHA pins need deliberate updates (Dependabot for `github-actions` is
 a follow-up).
+
+## ADR-007 — Shortener implementation choices
+
+**Status:** Accepted · 2026-10-15
+
+**Context.** SHORT-001 … SHORT-017 need unique codes under concurrency, SSRF-safe targets, and
+analytics, all verifiable against the contract.
+
+**Decision.**
+- **Data access with `JdbcClient` and plain SQL, not JPA.** There are two tables and five
+  queries. The on-conflict insert and the top-referrers aggregation read more clearly as SQL,
+  and there is no ORM session or lazy loading to reason about. Table names are
+  schema-qualified (`shortener.urls`) instead of relying on `search_path`.
+- **The database decides uniqueness.** Creates use
+  `INSERT … ON CONFLICT (code) DO NOTHING RETURNING …`, so a collision is an empty result, not
+  an exception. Generated codes retry up to 5 times; a taken alias is an immediate 409. No
+  locks or pre-checks, so there is no check-then-act race; the concurrency test proves exactly
+  one winner per alias.
+- **Random codes** come from `SecureRandom`: 7 Base62 characters (≈3.5 × 10¹²), so codes
+  can't be enumerated by walking a sequence.
+- **SSRF guardrails** follow browser (WHATWG) host parsing, so `2130706433`, `0x7f000001`,
+  `0177.0.0.1`, `127.1` and IPv4-mapped IPv6 are all recognised as loopback. Hostnames are
+  resolved once at creation and rejected if any address is loopback, private, link-local,
+  CGNAT, ULA, multicast or a cloud metadata endpoint. DNS sits behind a `HostResolver`
+  interface so tests never touch real DNS.
+- **Click recording is best-effort**: a storage failure is logged and counted
+  (`shortener.click.record.failures`) and the redirect still succeeds. `Cache-Control: no-store`
+  keeps browsers from skipping the service.
+- **Strict JSON input**: unknown fields are a 400 (the contract says
+  `additionalProperties: false`), and `format: uri` is generated as `String` so validation sees
+  the raw input.
+- **Errors** come from one `@RestControllerAdvice`. Everything is RFC 9457 with
+  `type = https://agentic.local/problems/<slug>`, an `instance`, `errors[]` for field problems,
+  and a scrubbed `detail` on 5xx.
+- **Metrics** (Micrometer): `shortener.urls.created{kind}`, `shortener.redirects{outcome}`,
+  `shortener.code.collisions`, `shortener.code.exhausted`, `shortener.click.record.failures`.
+  The Observability task exports them to Prometheus.
+
+**Consequences.**
+- DNS is checked only at creation (assumption A3). A name that later re-points to a private
+  address is not caught (open question Q3).
+- The DNS lookup has no explicit timeout beyond the JVM resolver's. Production would add a
+  bounded, cached resolver.
+- Recording clicks synchronously adds one insert to each redirect (assumption A6). At scale
+  this would move to an async buffer or a queue.
+- Internationalised domain names are rejected because `java.net.URI` doesn't parse them.
+  Punycode (`xn--…`) hosts work.
