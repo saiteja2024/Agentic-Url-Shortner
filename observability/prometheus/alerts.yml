@@ -1,0 +1,2 @@
+# Alert rules are defined in the Dashboards task; an empty group keeps Prometheus config valid.
+groups: []

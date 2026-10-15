@@ -1,0 +1,9 @@
+# Tests never ship telemetry to a real OpenObserve; spans are captured in memory where needed.
+management:
+  otlp:
+    tracing:
+      export:
+        enabled: false
+    logging:
+      export:
+        enabled: false

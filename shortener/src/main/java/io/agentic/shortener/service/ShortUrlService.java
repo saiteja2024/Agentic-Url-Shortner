@@ -91,7 +91,7 @@ public class ShortUrlService {
         ShortUrl created = alias != null
                 ? createWithAlias(alias, longUrl, now, expiresAt)
                 : createWithGeneratedCode(longUrl, now, expiresAt);
-        meters.counter("shortener.urls.created", "kind", alias != null ? "alias" : "generated")
+        meters.counter("shortener.urls.issued", "kind", alias != null ? "alias" : "generated")
                 .increment();
         return created;
     }

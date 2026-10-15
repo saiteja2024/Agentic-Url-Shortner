@@ -42,6 +42,8 @@
 
         <springdoc.version>2.8.17</springdoc.version>
         <openapi-generator.version>7.24.0</openapi-generator.version>
+        <!-- Must match Boot's OpenTelemetry SDK (opentelemetry.version, 1.49.0). -->
+        <otel-logback-appender.version>2.15.0-alpha</otel-logback-appender.version>
         <swagger-request-validator.version>2.46.1</swagger-request-validator.version>
 
         <spotless.version>2.46.1</spotless.version>
@@ -71,6 +73,11 @@
                 <groupId>org.mozilla</groupId>
                 <artifactId>rhino</artifactId>
                 <version>${rhino.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+                <version>${otel-logback-appender.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.atlassian.oai</groupId>

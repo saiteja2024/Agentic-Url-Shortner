@@ -1,6 +1,7 @@
 package io.agentic.orchestrator.dag;
 
 import io.agentic.common.ContentHash;
+import io.agentic.common.MdcKeys;
 import io.agentic.orchestrator.gate.Gate;
 import io.agentic.orchestrator.gate.GateContext;
 import io.agentic.orchestrator.gate.GateRegistry;
@@ -20,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
+import org.slf4j.MDC;
 import org.springframework.lang.Nullable;
 
 /**
@@ -165,7 +167,19 @@ public final class Run {
 
     // ---- node execution -----------------------------------------------------------------
 
+    /** Runs one node with runId/nodeId in the logging MDC (OBS-003). */
     private CompletableFuture<Void> runNode(String nodeId) {
+        MDC.put(MdcKeys.RUN_ID, id.toString());
+        MDC.put(MdcKeys.NODE_ID, nodeId);
+        try {
+            return executeNode(nodeId);
+        } finally {
+            MDC.remove(MdcKeys.RUN_ID);
+            MDC.remove(MdcKeys.NODE_ID);
+        }
+    }
+
+    private CompletableFuture<Void> executeNode(String nodeId) {
         Node node = nodes.get(nodeId);
         StageSpec stage = stages.get(nodeId);
         if (stage.when() != null && !mode.matches(stage.when())) {

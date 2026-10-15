@@ -212,9 +212,11 @@ analytics, all verifiable against the contract.
 - **Errors** come from one `@RestControllerAdvice`. Everything is RFC 9457 with
   `type = https://agentic.local/problems/<slug>`, an `instance`, `errors[]` for field problems,
   and a scrubbed `detail` on 5xx.
-- **Metrics** (Micrometer): `shortener.urls.created{kind}`, `shortener.redirects{outcome}`,
+- **Metrics** (Micrometer): `shortener.urls.issued{kind}`, `shortener.redirects{outcome}`,
   `shortener.code.collisions`, `shortener.code.exhausted`, `shortener.click.record.failures`.
-  The Observability task exports them to Prometheus.
+  They're exported to Prometheus. Note that `_created` is a reserved OpenMetrics suffix:
+  `shortener.urls.created` was silently exported as `shortener_urls_total`, so it was
+  renamed to `shortener.urls.issued`.
 
 **Consequences.**
 - DNS is checked only at creation (assumption A3). A name that later re-points to a private
