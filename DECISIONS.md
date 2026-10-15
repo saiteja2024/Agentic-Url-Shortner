@@ -225,3 +225,36 @@ analytics, all verifiable against the contract.
   this would move to an async buffer or a queue.
 - Internationalised domain names are rejected because `java.net.URI` doesn't parse them.
   Punycode (`xn--…`) hosts work.
+
+## ADR-008 — DAG engine: futures as the scheduler, the database as the auditor
+
+**Status:** Accepted · 2026-10-15
+
+**Context.** ORCH-001 … ORCH-013 need dependency ordering, parallel branches with a join
+barrier, pausing for approval without blocking threads, and an audit trail nobody can rewrite.
+
+**Decision.**
+- **Stages come from `specs/orchestrator/pipeline.yaml`.** The file is copied onto the
+  classpath, strictly parsed (unknown keys fail) and validated at startup. Every problem is
+  reported at once, and Kahn's algorithm rejects cycles with the cycle path named.
+- **Each node is a `CompletableFuture`.** It is
+  `allOf(dependencies).thenComposeAsync(runNode)` on a bounded pool, which gives the join
+  barrier for free. A failed node completes exceptionally, so all its transitive dependents are
+  skipped automatically while unrelated branches carry on. A node waiting for approval holds
+  an *incomplete* future, which pauses only its own downstream path and uses no thread while
+  waiting.
+- **Approval gates are exit-only** and evaluated after every other exit gate passes, so a human
+  never approves output that a machine check would reject.
+- **Events are serialised per run.** A sequence number is assigned and delivered under the
+  run's lock, so the audit log order is the real order. A listener that throws fails the step:
+  a state change that can't be recorded must not proceed.
+- **Append-only audit in the database.** A trigger rejects `UPDATE`/`DELETE`/`TRUNCATE` on
+  `orchestrator.events` even for the owner, and a least-privilege `orchestrator_app` role has
+  only `SELECT`/`INSERT`. The trigger is what protects the prototype, which connects as the
+  owner; the role is the production setup.
+- **Lineage:** artifact `content_hash` is SHA-256 (`common.ContentHash`), and `parent_hashes`
+  are the sorted hashes of all direct-dependency artifacts. Re-plan compares these hashes.
+
+**Consequences.** Runs live in memory, so a restart loses in-flight runs, although the schema
+holds enough to rebuild them (a production next step). The futures model makes retries a
+per-node loop inside `runNode` rather than graph surgery, which keeps governance simple.
