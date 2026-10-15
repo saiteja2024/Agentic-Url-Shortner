@@ -6,22 +6,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.agentic.shortener.support.TestcontainersConfiguration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
 class ShortenerApplicationTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Test
-    @DisplayName("context starts and reports healthy")
+    @DisplayName("context starts, migrates the schema and reports healthy")
     void contextStartsAndReportsHealthy() throws Exception {
         mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())
