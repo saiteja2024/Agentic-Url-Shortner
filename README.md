@@ -4,9 +4,9 @@
 
 ## Walkthrough video (4 min 48 s)
 
-[![Captioned walkthrough: shortener, three governed runs, kill switch, traces, dashboards, alerts](docs/demo/poster.png)](docs/demo/walkthrough.webm)
+[![Captioned walkthrough: shortener, three governed runs, kill switch, traces, dashboards, alerts](docs/demo/poster.png)](https://cdn.jsdelivr.net/gh/saiteja2024/Agentic-Url-Shortner@985293f/docs/demo/walkthrough-small.webm)
 
-**[▶ Watch the walkthrough](docs/demo/walkthrough.webm)** (WebM, 1440×900, captioned, no audio). It shows the
+**[▶ Play the walkthrough in your browser](https://cdn.jsdelivr.net/gh/saiteja2024/Agentic-Url-Shortner@985293f/docs/demo/walkthrough-small.webm)** (WebM, 1440×900, captioned, no audio; [full-quality download](https://github.com/saiteja2024/Agentic-Url-Shortner/raw/main/docs/demo/walkthrough.webm)). It shows the
 contract-first shortener (including the SSRF guardrails), the greenfield, brownfield and ambiguous runs
 with approvals, retries, rollback, escalation, clarifications and a minimal re-plan, the kill switch,
 the full run trace in OpenObserve, the three Grafana dashboards and the Prometheus alert rules. Every
