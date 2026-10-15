@@ -25,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 /** Create, resolve and report on short links (specs/shortener/requirements.md). */
 @Service
@@ -144,7 +146,13 @@ public class ShortUrlService {
         return url;
     }
 
-    /** @throws ShortUrlNotFoundException unknown code (404); expired links still report (A4) */
+    /**
+     * Reads every figure from one snapshot, so a click committed mid-read is counted everywhere or
+     * nowhere (SHORT-010). READ_COMMITTED would let the two aggregate queries disagree.
+     *
+     * @throws ShortUrlNotFoundException unknown code (404); expired links still report (A4)
+     */
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public LinkStats stats(String code) {
         ShortUrl url = urls.findByCode(code).orElseThrow(() -> new ShortUrlNotFoundException(code));
         ClickSummary summary = clicks.summarize(url.id());

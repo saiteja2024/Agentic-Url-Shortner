@@ -24,6 +24,8 @@ spring:
     deserialization:
       # The contract declares additionalProperties: false; unknown fields are a 400, not ignored.
       fail-on-unknown-properties: true
+      # `{...} {}` is malformed JSON, not "the first object" (SHORT-015).
+      fail-on-trailing-tokens: true
   mvc:
     problemdetails:
       enabled: true

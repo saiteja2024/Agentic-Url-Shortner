@@ -103,6 +103,7 @@ Status: Implemented
 - **When** a client sends `GET /api/v1/urls/{code}/stats`
 - **Then** the response is `200 OK` with `code`, `longUrl`, `createdAt`, `expiresAt` (if set), `expired`, `totalClicks`, `lastClickedAt` (if any) and `topReferrers`
 - **And** `topReferrers` lists up to 10 referrers ordered by click count descending, with clicks without a referrer grouped as `"(direct)"`
+- **And** all figures come from one consistent snapshot: a click recorded while the stats are being read is either counted in every figure or in none (when there are ≤ 10 referrers, `totalClicks` equals the sum of `topReferrers[].clicks`)
 
 ## URL validation (SSRF / abuse guardrails)
 
@@ -146,6 +147,8 @@ Status: Implemented
 - **Given** a body with `url` missing, blank, or longer than 2048 characters, or malformed JSON
 - **When** it is submitted
 - **Then** the response is `400 Bad Request` ProblemDetail with an `errors[]` entry per invalid field
+- **Given** a body with a field of the wrong JSON type (e.g. `"alias": true`, `"url": 123`), an unknown field, or trailing content after the JSON object (`{…} {}`)
+- **Then** it is rejected with `400` and nothing is persisted — values are never coerced between JSON types
 
 ## Cross-cutting
 

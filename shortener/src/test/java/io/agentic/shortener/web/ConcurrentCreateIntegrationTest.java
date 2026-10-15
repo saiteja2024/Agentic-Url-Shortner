@@ -83,11 +83,15 @@ class ConcurrentCreateIntegrationTest {
         return http.send(request, HttpResponse.BodyHandlers.ofString());
     }
 
-    /** Releases every call at once from a start gate, then waits for all of them. */
+    /**
+     * Releases every call at once from a start gate, then waits for all of them. Unfinished calls are
+     * cancelled and interrupted, so a stalled request fails the test instead of hanging the suite.
+     */
     private static <T> List<T> runTogether(List<Callable<T>> calls) throws Exception {
         CountDownLatch gate = new CountDownLatch(1);
-        try (ExecutorService pool = Executors.newFixedThreadPool(calls.size())) {
-            List<Future<T>> futures = new ArrayList<>();
+        ExecutorService pool = Executors.newFixedThreadPool(calls.size());
+        List<Future<T>> futures = new ArrayList<>();
+        try {
             for (Callable<T> call : calls) {
                 futures.add(pool.submit(() -> {
                     gate.await();
@@ -95,11 +99,18 @@ class ConcurrentCreateIntegrationTest {
                 }));
             }
             gate.countDown();
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
             List<T> results = new ArrayList<>();
             for (Future<T> f : futures) {
-                results.add(f.get(30, TimeUnit.SECONDS));
+                results.add(f.get(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS));
             }
             return results;
+        } finally {
+            futures.forEach(f -> f.cancel(true));
+            pool.shutdownNow();
+            if (!pool.awaitTermination(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("request threads did not stop after interrupt");
+            }
         }
     }
 }

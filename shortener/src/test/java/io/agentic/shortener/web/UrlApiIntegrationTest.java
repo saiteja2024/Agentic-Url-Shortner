@@ -230,6 +230,37 @@ class UrlApiIntegrationTest {
                     .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON))
                     .andExpect(jsonPath("$.errors").isNotEmpty());
         }
+
+        @ParameterizedTest
+        @Tag("SHORT-015")
+        @DisplayName("SHORT-015: wrong JSON types and trailing content are 400 and never persisted")
+        @ValueSource(
+                strings = {
+                    "{\"url\":\"URL\",\"alias\":true}",
+                    "{\"url\":\"URL\",\"alias\":12345}",
+                    "{\"url\":\"URL\",\"alias\":1.5}",
+                    "{\"url\":\"URL\",\"alias\":[\"abc\"]}",
+                    "{\"url\":\"URL\"} {}",
+                    "{\"url\":\"URL\"} trailing"
+                })
+        void rejectsCoercionAndTrailingContent(String template) throws Exception {
+            String longUrl = uniqueLongUrl();
+            create(template.replace("URL", longUrl))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(responseConformsToSpec())
+                    .andExpect(jsonPath("$.errors").isNotEmpty());
+            assertThat(rowsFor(longUrl)).isZero();
+        }
+
+        @Test
+        @Tag("SHORT-015")
+        @DisplayName("SHORT-015: a number is not accepted as the url")
+        void rejectsNumericUrl() throws Exception {
+            create("{\"url\":123}")
+                    .andExpect(status().isBadRequest())
+                    .andExpect(responseConformsToSpec())
+                    .andExpect(jsonPath("$.errors[0].field").value("url"));
+        }
     }
 
     // ---- redirect + clicks -----------------------------------------------------------
