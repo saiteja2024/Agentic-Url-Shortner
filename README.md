@@ -1,6 +1,16 @@
 # Agentic SDLC Orchestrator
 
-> **Walkthrough video:** _link to be added after recording_ · **Repo:** https://github.com/saiteja2024/Agentic-Url-Shortner
+> **Repo:** https://github.com/saiteja2024/Agentic-Url-Shortner
+
+## Walkthrough video (4 min 48 s)
+
+[![Captioned walkthrough: shortener, three governed runs, kill switch, traces, dashboards, alerts](docs/demo/poster.png)](docs/demo/walkthrough.webm)
+
+**[▶ Watch the walkthrough](docs/demo/walkthrough.webm)** (WebM, 1440×900, captioned, no audio). It shows the
+contract-first shortener (including the SSRF guardrails), the greenfield, brownfield and ambiguous runs
+with approvals, retries, rollback, escalation, clarifications and a minimal re-plan, the kill switch,
+the full run trace in OpenObserve, the three Grafana dashboards and the Prometheus alert rules. Every
+step is real; the video was captured with a scripted browser session against the running stack.
 
 A governed, agentic software-delivery pipeline that turns a requirement into a reviewable
 engineering outcome. Eight agents (requirements → impact analysis → design → implement ‖ test
