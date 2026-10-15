@@ -154,6 +154,12 @@ approve before implementation.
 - The OpenAPI 3.1 parser can't resolve file paths containing spaces, so the build passes
   the spec as a percent-encoded `file://` URI (`${specs.uri}`, computed by
   build-helper), and tests load the spec as inline content.
+- The generator's OpenAPI 3.1 support is beta. On some checkout paths it dereferences
+  `items: $ref` and emits duplicate `<Parent>_<prop>_inner` models. CI caught this:
+  `UrlStatsTopReferrersInner` appeared there but not locally. `schemaMappings` in
+  `shortener/pom.xml` map those names back to the component models, so every machine gets
+  the same types. A new array-of-`$ref` needs a new mapping, and CI fails at compile time if
+  one is missing.
 
 **Rejected: code-first springdoc.** Generating the spec from annotations means the spec
 trails the code. Nobody reviews the contract before it's built, breaking changes surface
