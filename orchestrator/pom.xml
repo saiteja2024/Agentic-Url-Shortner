@@ -18,6 +18,10 @@
             <artifactId>common</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.anthropic</groupId>
+            <artifactId>anthropic-java</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
         </dependency>
@@ -61,6 +65,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -71,6 +79,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.atlassian.oai</groupId>
+            <artifactId>swagger-request-validator-mockmvc</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -108,9 +121,48 @@
                     <include>pipeline.yaml</include>
                 </includes>
             </resource>
+            <!-- The hand-written API contract, served to Swagger UI and used by contract tests. -->
+            <resource>
+                <targetPath>static/openapi</targetPath>
+                <directory>${maven.multiModuleProjectDirectory}/specs/orchestrator</directory>
+                <includes>
+                    <include>openapi.yaml</include>
+                </includes>
+            </resource>
         </resources>
 
         <plugins>
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>orchestrator-api</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${specs.uri}/orchestrator/openapi.yaml</inputSpec>
+                            <apiPackage>io.agentic.orchestrator.generated.api</apiPackage>
+                            <modelPackage>io.agentic.orchestrator.generated.model</modelPackage>
+                            <!-- See shortener/pom.xml: keeps generated types identical on every checkout path. -->
+                            <schemaMappings>
+                                <schemaMapping>ProblemDetail_errors_inner=io.agentic.orchestrator.generated.model.FieldError</schemaMapping>
+                                <schemaMapping>RunDetail_nodes_inner=io.agentic.orchestrator.generated.model.NodeView</schemaMapping>
+                                <schemaMapping>RunReport_approvals_inner=io.agentic.orchestrator.generated.model.ApprovalReport</schemaMapping>
+                                <schemaMapping>RunReport_artifacts_inner=io.agentic.orchestrator.generated.model.ArtifactReport</schemaMapping>
+                                <schemaMapping>RunReport_clarifications_inner=io.agentic.orchestrator.generated.model.ClarificationReport</schemaMapping>
+                                <schemaMapping>RunReport_gates_inner=io.agentic.orchestrator.generated.model.GateReport</schemaMapping>
+                                <schemaMapping>RunReport_nodes_inner=io.agentic.orchestrator.generated.model.NodeReport</schemaMapping>
+                                <schemaMapping>RunReport_rollbacks_inner=io.agentic.orchestrator.generated.model.RollbackReport</schemaMapping>
+                                <schemaMapping>RunReport_tokens=io.agentic.orchestrator.generated.model.TokenReport</schemaMapping>
+                                <schemaMapping>listApprovals_200_response_inner=io.agentic.orchestrator.generated.model.PendingApproval</schemaMapping>
+                                <schemaMapping>listApprovals_200_response_inner_questions_inner=io.agentic.orchestrator.generated.model.Question</schemaMapping>
+                            </schemaMappings>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

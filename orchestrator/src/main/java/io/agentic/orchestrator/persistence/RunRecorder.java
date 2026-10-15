@@ -31,15 +31,22 @@ public class RunRecorder implements RunListener {
         Timestamp at = Timestamp.from(event.at());
         switch (event.type()) {
             case RUN_STARTED ->
-                jdbc.sql("INSERT INTO orchestrator.runs"
-                                + " (id, pipeline_name, pipeline_version, mode, status, started_at)"
-                                + " VALUES (?, ?, ?, ?, 'RUNNING', ?)")
+                jdbc.sql(
+                                "INSERT INTO orchestrator.runs (id, pipeline_name, pipeline_version, mode,"
+                                        + " status, started_at, scenario, request, branch) VALUES (?, ?, ?, ?, 'RUNNING', ?, ?, ?, ?)")
                         .params(
                                 event.runId(),
                                 event.payload().get("pipeline"),
                                 event.payload().get("version"),
                                 event.payload().get("mode"),
-                                at)
+                                at,
+                                event.payload().getOrDefault("scenario", "unknown"),
+                                event.payload().getOrDefault("request", ""),
+                                event.payload().getOrDefault("branch", ""))
+                        .update();
+            case REPLAN_STARTED ->
+                jdbc.sql("UPDATE orchestrator.runs SET status = 'RUNNING', finished_at = NULL WHERE id = ?")
+                        .param(event.runId())
                         .update();
             case NODE_TRANSITION -> upsertNode(event, at);
             default -> {
@@ -60,8 +67,8 @@ public class RunRecorder implements RunListener {
                         at)
                 .update();
         if (event.type() == EventType.RUN_FINISHED) {
-            jdbc.sql("UPDATE orchestrator.runs SET status = ?, finished_at = ? WHERE id = ?")
-                    .params(event.payload().get("status"), at, event.runId())
+            jdbc.sql("UPDATE orchestrator.runs SET status = ?, finished_at = ?, stop_reason = ? WHERE id = ?")
+                    .params(event.payload().get("status"), at, event.payload().get("reason"), event.runId())
                     .update();
         }
     }

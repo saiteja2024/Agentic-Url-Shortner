@@ -3,10 +3,21 @@ package io.agentic.orchestrator.dag;
 /** Kinds of audit events (ORCH-012). */
 public enum EventType {
     RUN_STARTED,
+    RUN_STOPPED,
     RUN_FINISHED,
     NODE_TRANSITION,
     NODE_SKIPPED,
+    NODE_RETRY,
+    NODE_RECOVERED,
+    ROLLBACK,
     GATE_EVALUATED,
+    POLICY_MATCHED,
     APPROVAL_DECIDED,
-    ARTIFACT_RECORDED
+    CLARIFICATION_ANSWERED,
+    ASSUMPTION_RECORDED,
+    ARTIFACT_RECORDED,
+    LLM_USAGE,
+    MERGED,
+    REPLAN_STARTED,
+    REPLAN_COMPARED
 }

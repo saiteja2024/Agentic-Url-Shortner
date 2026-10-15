@@ -49,6 +49,15 @@ public final class Node {
         return previous;
     }
 
+    /** Starts another attempt without leaving RUNNING (a retry); returns the new attempt number. */
+    public synchronized int nextAttempt() {
+        if (status != NodeStatus.RUNNING) {
+            throw new IllegalNodeTransitionException(id, status, NodeStatus.RUNNING);
+        }
+        failureReason = null;
+        return ++attempt;
+    }
+
     synchronized void recordFailure(String reason) {
         this.failureReason = reason;
     }

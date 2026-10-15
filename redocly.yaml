@@ -5,6 +5,8 @@ extends:
 apis:
   shortener@v1:
     root: specs/shortener/openapi.yaml
+  orchestrator@v1:
+    root: specs/orchestrator/openapi.yaml
 
 rules:
   # Every operation must document its failure modes and identify itself.

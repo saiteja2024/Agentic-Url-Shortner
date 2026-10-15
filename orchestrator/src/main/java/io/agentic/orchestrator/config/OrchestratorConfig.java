@@ -1,15 +1,24 @@
 package io.agentic.orchestrator.config;
 
+import io.agentic.orchestrator.agent.AgentCatalog;
+import io.agentic.orchestrator.agent.ClaudeLlmClient;
+import io.agentic.orchestrator.agent.LlmClient;
+import io.agentic.orchestrator.agent.MockLlmClient;
 import io.agentic.orchestrator.dag.AgentRegistry;
 import io.agentic.orchestrator.dag.DagEngine;
+import io.agentic.orchestrator.gate.BuiltInGates;
 import io.agentic.orchestrator.gate.GateRegistry;
 import io.agentic.orchestrator.pipeline.PipelineDefinition;
 import io.agentic.orchestrator.pipeline.PipelineLoader;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.observation.ObservationRegistry;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Clock;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -35,18 +44,60 @@ class OrchestratorConfig {
         }
     }
 
-    @Bean(destroyMethod = "shutdown")
-    ExecutorService nodeExecutor(OrchestratorProperties properties) {
-        AtomicInteger counter = new AtomicInteger();
-        return Executors.newFixedThreadPool(properties.maxParallelNodes(), runnable -> {
-            Thread thread = new Thread(runnable, "dag-node-" + counter.incrementAndGet());
-            thread.setDaemon(true);
-            return thread;
-        });
+    /** ORCH-020: mock by default; {@code claude} needs an API key and fails fast without one. */
+    @Bean
+    LlmClient llmClient(OrchestratorProperties properties) {
+        OrchestratorProperties.Llm llm = properties.llm();
+        return switch (llm.mode()) {
+            case "mock" -> new MockLlmClient(llm.recordings());
+            case "claude" -> {
+                if (llm.apiKey() == null || llm.apiKey().isBlank()) {
+                    throw new IllegalStateException("orchestrator.llm.mode=claude requires ANTHROPIC_API_KEY");
+                }
+                yield new ClaudeLlmClient(llm.apiKey(), llm.model());
+            }
+            default -> throw new IllegalStateException("unknown orchestrator.llm.mode '" + llm.mode() + "'");
+        };
     }
 
     @Bean
-    DagEngine dagEngine(ExecutorService nodeExecutor, AgentRegistry agents, GateRegistry gates, Clock clock) {
-        return new DagEngine(nodeExecutor, agents, gates, clock);
+    AgentRegistry agentRegistry(LlmClient llm) {
+        return new AgentCatalog(llm);
+    }
+
+    @Bean
+    GateRegistry gateRegistry(OrchestratorProperties properties) {
+        return new BuiltInGates(properties.commandTimeout());
+    }
+
+    @Bean(destroyMethod = "shutdown")
+    ExecutorService nodeExecutor(OrchestratorProperties properties) {
+        return Executors.newFixedThreadPool(properties.maxParallelNodes(), named("dag-node"));
+    }
+
+    @Bean(destroyMethod = "shutdownNow")
+    ScheduledExecutorService budgetTimers() {
+        return Executors.newSingleThreadScheduledExecutor(named("dag-budget"));
+    }
+
+    @Bean
+    DagEngine dagEngine(
+            ExecutorService nodeExecutor,
+            AgentRegistry agents,
+            GateRegistry gates,
+            Clock clock,
+            MeterRegistry meters,
+            ObservationRegistry observations,
+            ScheduledExecutorService budgetTimers) {
+        return new DagEngine(nodeExecutor, agents, gates, clock, meters, observations, budgetTimers);
+    }
+
+    private static ThreadFactory named(String prefix) {
+        AtomicInteger counter = new AtomicInteger();
+        return runnable -> {
+            Thread thread = new Thread(runnable, prefix + "-" + counter.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
+        };
     }
 }

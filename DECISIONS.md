@@ -260,3 +260,36 @@ barrier, pausing for approval without blocking threads, and an audit trail nobod
 **Consequences.** Runs live in memory, so a restart loses in-flight runs, although the schema
 holds enough to rebuild them (a production next step). The futures model makes retries a
 per-node loop inside `runNode` rather than graph surgery, which keeps governance simple.
+
+## ADR-009 — Agents, governance and the run API
+
+**Status:** Accepted · 2026-10-15
+
+**Decision.**
+- **Mock-first LLM.** Agents call `LlmClient`. `MockLlmClient` replays recordings keyed by
+  scenario, agent and attempt, so runs are deterministic, offline and free in demos and CI.
+  `ClaudeLlmClient` uses the official Anthropic Java SDK (`claude-opus-5-5`, server-side refusal
+  fallbacks enabled) when `LLM_MODE=claude`, and startup fails fast without an API key.
+- **Agents act through files, not tools.** A reply's `<<<FILE path … >>>` blocks are written to
+  the run's workspace, with path traversal refused. `## Open questions` raises clarifications
+  and `ACTION: merge` requests the merge. Impact analysis must name files that exist.
+- **One git branch per run** (`run/<id>` in `workspaces/<id>`). Each node is checkpointed by a
+  commit; retries and rollbacks are `git reset --hard <checkpoint>`; merge into `main` happens
+  only after the merge approval.
+- **Real gates on a real project.** The target is a small Maven project
+  (`scenarios/seed/linkkit`). `compile`, `tests-pass` and `coverage` run real `mvn` (about 3 s)
+  with a timeout; `allowed-paths`, `secret-scan` and `requirements` inspect the git diff and
+  the artifact. A failed gate's output is fed back into the next attempt's prompt.
+- **Governance lives in the engine, not in the agents.** Retries (3 attempts), rollback,
+  escalation, policy approvals, clarifications, the kill switch, token and time budgets and
+  re-plan are all enforced by `Run`, so no agent can bypass them.
+- **The report is rebuilt from the audit log.** `GET /runs/{id}/report` reads only
+  `orchestrator.events`, `nodes` and `artifacts`, so anything missing from the audit trail is
+  missing from the report too, which keeps the audit honest.
+- **API key, fail closed.** Mutations need `X-API-Key` (constant-time compare); with no key
+  configured, every mutation is refused. Reads stay open for the UI and dashboards.
+
+**Consequences.** Mock recordings make the three scenarios reproducible but not intelligent:
+feedback changes the prompt, not the recorded reply. The brownfield scenario's recordings are
+written so that the retry visibly succeeds on attempt 2. The real-model path is exercised only
+manually.

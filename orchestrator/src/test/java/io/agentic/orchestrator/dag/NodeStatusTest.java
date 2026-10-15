@@ -21,7 +21,7 @@ class NodeStatusTest {
     private static final Map<NodeStatus, Set<NodeStatus>> ALLOWED = Map.of(
             PENDING, EnumSet.of(RUNNING, DONE),
             RUNNING, EnumSet.of(DONE, FAILED, WAITING_APPROVAL),
-            WAITING_APPROVAL, EnumSet.of(DONE, FAILED),
+            WAITING_APPROVAL, EnumSet.of(DONE, FAILED, RUNNING),
             DONE, EnumSet.of(STALE),
             STALE, EnumSet.of(RUNNING),
             FAILED, EnumSet.noneOf(NodeStatus.class));
