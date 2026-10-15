@@ -160,6 +160,10 @@ approve before implementation.
   `shortener/pom.xml` map those names back to the component models, so every machine gets
   the same types. A new array-of-`$ref` needs a new mapping, and CI fails at compile time if
   one is missing.
+- The same path-dependent dereferencing turned `$ref`s to shared **enum** schemas into per-class
+  inline enums on CI only. The orchestrator spec therefore declares enums inline at each use, so
+  every checkout generates the same per-class `…Enum` types. Before pushing a spec change, run a
+  clean build from a checkout path without spaces as well.
 
 **Rejected: code-first springdoc.** Generating the spec from annotations means the spec
 trails the code. Nobody reviews the contract before it's built, breaking changes surface
@@ -212,9 +216,11 @@ analytics, all verifiable against the contract.
 - **Errors** come from one `@RestControllerAdvice`. Everything is RFC 9457 with
   `type = https://agentic.local/problems/<slug>`, an `instance`, `errors[]` for field problems,
   and a scrubbed `detail` on 5xx.
-- **Metrics** (Micrometer): `shortener.urls.created{kind}`, `shortener.redirects{outcome}`,
+- **Metrics** (Micrometer): `shortener.urls.issued{kind}`, `shortener.redirects{outcome}`,
   `shortener.code.collisions`, `shortener.code.exhausted`, `shortener.click.record.failures`.
-  The Observability task exports them to Prometheus.
+  They're exported to Prometheus. Note that `_created` is a reserved OpenMetrics suffix:
+  `shortener.urls.created` was silently exported as `shortener_urls_total`, so it was
+  renamed to `shortener.urls.issued`.
 
 **Consequences.**
 - DNS is checked only at creation (assumption A3). A name that later re-points to a private
@@ -225,3 +231,69 @@ analytics, all verifiable against the contract.
   this would move to an async buffer or a queue.
 - Internationalised domain names are rejected because `java.net.URI` doesn't parse them.
   Punycode (`xn--…`) hosts work.
+
+## ADR-008 — DAG engine: futures as the scheduler, the database as the auditor
+
+**Status:** Accepted · 2026-10-15
+
+**Context.** ORCH-001 … ORCH-013 need dependency ordering, parallel branches with a join
+barrier, pausing for approval without blocking threads, and an audit trail nobody can rewrite.
+
+**Decision.**
+- **Stages come from `specs/orchestrator/pipeline.yaml`.** The file is copied onto the
+  classpath, strictly parsed (unknown keys fail) and validated at startup. Every problem is
+  reported at once, and Kahn's algorithm rejects cycles with the cycle path named.
+- **Each node is a `CompletableFuture`.** It is
+  `allOf(dependencies).thenComposeAsync(runNode)` on a bounded pool, which gives the join
+  barrier for free. A failed node completes exceptionally, so all its transitive dependents are
+  skipped automatically while unrelated branches carry on. A node waiting for approval holds
+  an *incomplete* future, which pauses only its own downstream path and uses no thread while
+  waiting.
+- **Approval gates are exit-only** and evaluated after every other exit gate passes, so a human
+  never approves output that a machine check would reject.
+- **Events are serialised per run.** A sequence number is assigned and delivered under the
+  run's lock, so the audit log order is the real order. A listener that throws fails the step:
+  a state change that can't be recorded must not proceed.
+- **Append-only audit in the database.** A trigger rejects `UPDATE`/`DELETE`/`TRUNCATE` on
+  `orchestrator.events` even for the owner, and a least-privilege `orchestrator_app` role has
+  only `SELECT`/`INSERT`. The trigger is what protects the prototype, which connects as the
+  owner; the role is the production setup.
+- **Lineage:** artifact `content_hash` is SHA-256 (`common.ContentHash`), and `parent_hashes`
+  are the sorted hashes of all direct-dependency artifacts. Re-plan compares these hashes.
+
+**Consequences.** Runs live in memory, so a restart loses in-flight runs, although the schema
+holds enough to rebuild them (a production next step). The futures model makes retries a
+per-node loop inside `runNode` rather than graph surgery, which keeps governance simple.
+
+## ADR-009 — Agents, governance and the run API
+
+**Status:** Accepted · 2026-10-15
+
+**Decision.**
+- **Mock-first LLM.** Agents call `LlmClient`. `MockLlmClient` replays recordings keyed by
+  scenario, agent and attempt, so runs are deterministic, offline and free in demos and CI.
+  `ClaudeLlmClient` uses the official Anthropic Java SDK (`claude-opus-5-5`, server-side refusal
+  fallbacks enabled) when `LLM_MODE=claude`, and startup fails fast without an API key.
+- **Agents act through files, not tools.** A reply's `<<<FILE path … >>>` blocks are written to
+  the run's workspace, with path traversal refused. `## Open questions` raises clarifications
+  and `ACTION: merge` requests the merge. Impact analysis must name files that exist.
+- **One git branch per run** (`run/<id>` in `workspaces/<id>`). Each node is checkpointed by a
+  commit; retries and rollbacks are `git reset --hard <checkpoint>`; merge into `main` happens
+  only after the merge approval.
+- **Real gates on a real project.** The target is a small Maven project
+  (`scenarios/seed/linkkit`). `compile`, `tests-pass` and `coverage` run real `mvn` (about 3 s)
+  with a timeout; `allowed-paths`, `secret-scan` and `requirements` inspect the git diff and
+  the artifact. A failed gate's output is fed back into the next attempt's prompt.
+- **Governance lives in the engine, not in the agents.** Retries (3 attempts), rollback,
+  escalation, policy approvals, clarifications, the kill switch, token and time budgets and
+  re-plan are all enforced by `Run`, so no agent can bypass them.
+- **The report is rebuilt from the audit log.** `GET /runs/{id}/report` reads only
+  `orchestrator.events`, `nodes` and `artifacts`, so anything missing from the audit trail is
+  missing from the report too, which keeps the audit honest.
+- **API key, fail closed.** Mutations need `X-API-Key` (constant-time compare); with no key
+  configured, every mutation is refused. Reads stay open for the UI and dashboards.
+
+**Consequences.** Mock recordings make the three scenarios reproducible but not intelligent:
+feedback changes the prompt, not the recorded reply. The brownfield scenario's recordings are
+written so that the retry visibly succeeds on attempt 2. The real-model path is exercised only
+manually.

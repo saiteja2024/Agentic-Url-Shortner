@@ -1,0 +1,212 @@
+{
+  "runId": "43fcc4fc-7a74-4cd7-b663-43912fd2d1c0",
+  "scenario": "brownfield",
+  "mode": "BROWNFIELD",
+  "status": "FAILED",
+  "request": "Links must support an optional expiry; an expired link must no longer resolve.",
+  "branch": "run/43fcc4fc-7a74-4cd7-b663-43912fd2d1c0",
+  "startedAt": "2026-10-15T21:25:27.298789Z",
+  "finishedAt": "2026-10-15T21:25:44.655043Z",
+  "durationMs": 17356,
+  "nodes": [
+    {
+      "id": "requirements",
+      "status": "DONE",
+      "attempts": 1,
+      "durationMs": 104
+    },
+    {
+      "id": "impact-analysis",
+      "status": "DONE",
+      "attempts": 1,
+      "durationMs": 117
+    },
+    {
+      "id": "design",
+      "status": "DONE",
+      "attempts": 1,
+      "durationMs": 820
+    },
+    {
+      "id": "implement",
+      "status": "DONE",
+      "attempts": 2,
+      "durationMs": 8043
+    },
+    {
+      "id": "test-plan",
+      "status": "DONE",
+      "attempts": 1,
+      "durationMs": 255
+    },
+    {
+      "id": "test",
+      "status": "FAILED",
+      "attempts": 3,
+      "durationMs": 8222,
+      "failureReason": "rejected by sai: ExpiryTest asserts the wrong behaviour for REQ-002; needs a human fix"
+    }
+  ],
+  "gates": [
+    {
+      "nodeId": "requirements",
+      "gate": "requirements-ids",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "3 requirements with acceptance criteria: [REQ-001, REQ-002, REQ-003]",
+      "attempt": 1
+    },
+    {
+      "nodeId": "design",
+      "gate": "human-approval",
+      "phase": "exit",
+      "outcome": "NEEDS_APPROVAL",
+      "reason": "A human approves the design before anything is built",
+      "attempt": 1
+    },
+    {
+      "nodeId": "implement",
+      "gate": "compile",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "'mvn -B -q -DskipTests compile' succeeded in 2.3s",
+      "attempt": 1
+    },
+    {
+      "nodeId": "implement",
+      "gate": "tests-pass",
+      "phase": "exit",
+      "outcome": "FAIL",
+      "reason": "'mvn -B -q test' exit 1:\nannot be applied to given types;\n  required: java.lang.String,java.time.Duration\n  found:    java.lang.String\n  reason: actual and formal argument lists differ in length\n[ERROR] /Users/saiteja/Documents/AI Project/CharlesSwab-assesment/Agentic-Url-Shortner/workspaces/43fcc4fc-7a74-4cd7-b663-43912fd2d1c0/src/test/java/dev/linkkit/LinkStoreTest.java:[30,65] method shorten in class dev.linkkit.LinkStore cannot be applied to given types;\n  required: java.lang.String,java.time.Duration\n  found:    java.lang.String\n  reason: actual and formal argument lists differ in length\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:testCompile (default-testCompile) on project linkkit: Compilation failure: Compilation failure: \n[ERROR] /Users/saiteja/Documents/AI Project/CharlesSwab-assesment/Agentic-Url-Shortner/workspaces/43fcc4fc-7a74-4cd7-b663-43912fd2d1c0/src/test/java/dev/linkkit/LinkStoreTest.java:[18,26] method shorten in class dev.linkkit.LinkStore cannot be applied to given types;\n[ERROR]   required: java.lang.String,java.time.Duration\n[ERROR]   found:    java.lang.String\n[ERROR]   reason: actual and formal argument lists differ in length\n[ERROR] /Users/saiteja/Documents/AI Project/CharlesSwab-assesment/Agentic-Url-Shortner/workspaces/43fcc4fc-7a74-4cd7-b663-43912fd2d1c0/src/test/java/dev/linkkit/LinkStoreTest.java:[30,65] method shorten in class dev.linkkit.LinkStore cannot be applied to given types;\n[ERROR]   required: java.lang.String,java.time.Duration\n[ERROR]   found:    java.lang.String\n[ERROR]   reason: actual and formal argument lists differ in length\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException",
+      "attempt": 1
+    },
+    {
+      "nodeId": "implement",
+      "gate": "compile",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "'mvn -B -q -DskipTests compile' succeeded in 1.4s",
+      "attempt": 2
+    },
+    {
+      "nodeId": "implement",
+      "gate": "tests-pass",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "'mvn -B -q test' succeeded in 2.4s",
+      "attempt": 2
+    },
+    {
+      "nodeId": "implement",
+      "gate": "allowed-paths",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "all changes within [src/main/**]",
+      "attempt": 2
+    },
+    {
+      "nodeId": "implement",
+      "gate": "secret-scan",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "no secrets in 19 added lines",
+      "attempt": 2
+    },
+    {
+      "nodeId": "test",
+      "gate": "tests-pass",
+      "phase": "exit",
+      "outcome": "FAIL",
+      "reason": "'mvn -B -q test' exit 1:\n\tat org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)\n\tat org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)\n\tat org.junit.jupiter.api.AssertTrue.failNotTrue(AssertTrue.java:63)\n\tat org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:36)\n\tat org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:31)\n\tat org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:183)\n\tat dev.linkkit.ExpiryTest.expiredLinkDoesNotResolve(ExpiryTest.java:19)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1597)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1597)\n\n[ERROR] Failures: \n[ERROR]   ExpiryTest.expiredLinkDoesNotResolve:19 expected: <true> but was: <false>\n[ERROR] Tests run: 6, Failures: 1, Errors: 0, Skipped: 0\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.6:test (default-test) on project linkkit: There are test failures.\n[ERROR] \n[ERROR] See /Users/saiteja/Documents/AI Project/CharlesSwab-assesment/Agentic-Url-Shortner/workspaces/43fcc4fc-7a74-4cd7-b663-43912fd2d1c0/target/surefire-reports for the individual test results.\n[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException",
+      "attempt": 1
+    },
+    {
+      "nodeId": "test",
+      "gate": "tests-pass",
+      "phase": "exit",
+      "outcome": "FAIL",
+      "reason": "'mvn -B -q test' exit 1:\n\tat org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)\n\tat org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)\n\tat org.junit.jupiter.api.AssertTrue.failNotTrue(AssertTrue.java:63)\n\tat org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:36)\n\tat org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:31)\n\tat org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:183)\n\tat dev.linkkit.ExpiryTest.expiredLinkDoesNotResolve(ExpiryTest.java:19)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1597)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1597)\n\n[ERROR] Failures: \n[ERROR]   ExpiryTest.expiredLinkDoesNotResolve:19 expected: <true> but was: <false>\n[ERROR] Tests run: 6, Failures: 1, Errors: 0, Skipped: 0\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.6:test (default-test) on project linkkit: There are test failures.\n[ERROR] \n[ERROR] See /Users/saiteja/Documents/AI Project/CharlesSwab-assesment/Agentic-Url-Shortner/workspaces/43fcc4fc-7a74-4cd7-b663-43912fd2d1c0/target/surefire-reports for the individual test results.\n[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException",
+      "attempt": 2
+    },
+    {
+      "nodeId": "test",
+      "gate": "tests-pass",
+      "phase": "exit",
+      "outcome": "FAIL",
+      "reason": "'mvn -B -q test' exit 1:\n\tat org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)\n\tat org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)\n\tat org.junit.jupiter.api.AssertTrue.failNotTrue(AssertTrue.java:63)\n\tat org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:36)\n\tat org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:31)\n\tat org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:183)\n\tat dev.linkkit.ExpiryTest.expiredLinkDoesNotResolve(ExpiryTest.java:19)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1597)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1597)\n\n[ERROR] Failures: \n[ERROR]   ExpiryTest.expiredLinkDoesNotResolve:19 expected: <true> but was: <false>\n[ERROR] Tests run: 6, Failures: 1, Errors: 0, Skipped: 0\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.6:test (default-test) on project linkkit: There are test failures.\n[ERROR] \n[ERROR] See /Users/saiteja/Documents/AI Project/CharlesSwab-assesment/Agentic-Url-Shortner/workspaces/43fcc4fc-7a74-4cd7-b663-43912fd2d1c0/target/surefire-reports for the individual test results.\n[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException",
+      "attempt": 3
+    }
+  ],
+  "approvals": [
+    {
+      "nodeId": "design",
+      "kind": "APPROVAL",
+      "decision": "APPROVED",
+      "by": "sai",
+      "waitMs": 671
+    },
+    {
+      "nodeId": "test",
+      "kind": "ESCALATION",
+      "decision": "REJECTED",
+      "by": "sai",
+      "reason": "ExpiryTest asserts the wrong behaviour for REQ-002; needs a human fix",
+      "waitMs": 723
+    }
+  ],
+  "retries": 3,
+  "rollbacks": [
+    {
+      "nodeId": "test",
+      "checkpoint": "cfa424019f010fe85175f8b29b8079e87bbaa4f2",
+      "reason": "retries exhausted after 3 attempt(s): exit gate 'tests-pass' failed: 'mvn -B -q test' exit 1:\n\tat org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)\n\tat org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)\n\tat org.junit.jupiter.api.AssertTrue.failNotTrue(AssertTrue.java:63)\n\tat org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:36)\n\tat org.junit.jupiter.api.AssertTrue.assertTrue(AssertTrue.java:31)\n\tat org.junit.jupiter.api.Assertions.assertTrue(Assertions.java:183)\n\tat dev.linkkit.ExpiryTest.expiredLinkDoesNotResolve(ExpiryTest.java:19)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1597)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1597)\n\n[ERROR] Failures: \n[ERROR]   ExpiryTest.expiredLinkDoesNotResolve:19 expected: <true> but was: <false>\n[ERROR] Tests run: 6, Failures: 1, Errors: 0, Skipped: 0\n[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.6:test (default-test) on project linkkit: There are test failures.\n[ERROR] \n[ERROR] See /Users/saiteja/Documents/AI Project/CharlesSwab-assesment/Agentic-Url-Shortner/workspaces/43fcc4fc-7a74-4cd7-b663-43912fd2d1c0/target/surefire-reports for the individual test results.\n[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.\n[ERROR] -> [Help 1]\n[ERROR] \n[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.\n[ERROR] Re-run Maven using the -X switch to enable full debug logging.\n[ERROR] \n[ERROR] For more information about the errors and possible solutions, please read the following articles:\n[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException"
+    }
+  ],
+  "clarifications": [],
+  "artifacts": [
+    {
+      "nodeId": "requirements",
+      "name": "requirements.md",
+      "contentHash": "725edb5355822e3fce6729d9906e8ed06c74b9b5bc30ef8fb2871598e083c3df",
+      "parentHashes": []
+    },
+    {
+      "nodeId": "impact-analysis",
+      "name": "impact-analysis.md",
+      "contentHash": "d72f667e019538896d06d5d1779ff0b3cb160080ecedb80a1570cef2f233cf8e",
+      "parentHashes": [
+        "725edb5355822e3fce6729d9906e8ed06c74b9b5bc30ef8fb2871598e083c3df"
+      ]
+    },
+    {
+      "nodeId": "design",
+      "name": "design.md",
+      "contentHash": "c8edccae032b4f89cc053103a538f769d6a8599f2168e32ae197e29dc98216de",
+      "parentHashes": [
+        "725edb5355822e3fce6729d9906e8ed06c74b9b5bc30ef8fb2871598e083c3df",
+        "d72f667e019538896d06d5d1779ff0b3cb160080ecedb80a1570cef2f233cf8e"
+      ]
+    },
+    {
+      "nodeId": "test-plan",
+      "name": "test-plan.md",
+      "contentHash": "a815cbd9f3e76f8d8115a9216ccc840444eed4c7d8ebd9d52eda45e7d8b51e64",
+      "parentHashes": [
+        "c8edccae032b4f89cc053103a538f769d6a8599f2168e32ae197e29dc98216de"
+      ]
+    },
+    {
+      "nodeId": "implement",
+      "name": "implement.md",
+      "contentHash": "f03c6bd4be52033cbd22b80f68ae1721632a8b1f248b400658ec0a81f0fc7d8d",
+      "parentHashes": [
+        "c8edccae032b4f89cc053103a538f769d6a8599f2168e32ae197e29dc98216de"
+      ]
+    }
+  ],
+  "tokens": {
+    "input": 3439,
+    "output": 1889,
+    "budget": 200000
+  }
+}

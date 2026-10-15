@@ -41,7 +41,26 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: 1.0
+  # Traces and logs go to OpenObserve over OTLP/HTTP; export is best effort (OBS A1).
+  otlp:
+    tracing:
+      endpoint: ${OTLP_ENDPOINT:http://localhost:5080/api/default}/v1/traces
+      headers:
+        Authorization: ${OTLP_AUTH_HEADER:}
+    logging:
+      endpoint: ${OTLP_ENDPOINT:http://localhost:5080/api/default}/v1/logs
+      headers:
+        Authorization: ${OTLP_AUTH_HEADER:}
   endpoint:
     health:
       probes:

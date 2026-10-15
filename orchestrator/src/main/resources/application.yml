@@ -5,15 +5,80 @@ server:
 spring:
   application:
     name: orchestrator
+  # Running from the repo root or the module dir, pick up the same .env docker-compose uses.
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:agentic}
+    username: ${POSTGRES_USER:agentic}
+    password: ${POSTGRES_PASSWORD:}
+  flyway:
+    schemas: orchestrator
+    default-schema: orchestrator
+    create-schemas: true
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: true
+      fail-on-trailing-tokens: true
+  mvc:
+    problemdetails:
+      enabled: true
+
+orchestrator:
+  # Copied from specs/orchestrator/pipeline.yaml at build time; the spec is the source of truth.
+  pipeline-location: classpath:pipelines/pipeline.yaml
+  max-parallel-nodes: 4
+  # Shared secret for every mutating endpoint (X-API-Key). Empty = mutations refused (fail closed).
+  api-key: ${ORCHESTRATOR_API_KEY:}
+  workspaces-dir: ${ORCHESTRATOR_WORKSPACES_DIR:workspaces}
+  target-project: ${ORCHESTRATOR_TARGET_PROJECT:scenarios/seed/linkkit}
+  command-timeout: 5m
+  token-budget: 200000
+  time-budget: 15m
+  llm:
+    mode: ${LLM_MODE:mock}
+    model: claude-opus-5-5
+    api-key: ${ANTHROPIC_API_KEY:}
+    recordings: llm-recordings
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        orchestrator.run: true
+        orchestrator.node: true
+  tracing:
+    sampling:
+      probability: 1.0
+  # Traces and logs go to OpenObserve over OTLP/HTTP; export is best effort (OBS A1).
+  otlp:
+    tracing:
+      endpoint: ${OTLP_ENDPOINT:http://localhost:5080/api/default}/v1/traces
+      headers:
+        Authorization: ${OTLP_AUTH_HEADER:}
+    logging:
+      endpoint: ${OTLP_ENDPOINT:http://localhost:5080/api/default}/v1/logs
+      headers:
+        Authorization: ${OTLP_AUTH_HEADER:}
   endpoint:
     health:
       probes:
         enabled: true
+
+# Swagger UI renders the hand-written contract (copied from specs/orchestrator); no code-first spec.
+springdoc:
+  api-docs:
+    path: /openapi/springdoc
+  paths-to-exclude: /**
+  swagger-ui:
+    url: /openapi/openapi.yaml

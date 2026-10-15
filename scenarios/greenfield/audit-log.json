@@ -1,0 +1,616 @@
+[
+  {
+    "seq": 1,
+    "type": "RUN_STARTED",
+    "payload": {
+      "mode": "GREENFIELD",
+      "branch": "run/516df4b5-487c-4f22-a007-9137aa84f72d",
+      "request": "Add click analytics: record clicks with their referrer and report the top N referrers for a link.",
+      "version": "1.0.0",
+      "pipeline": "sdlc-default",
+      "scenario": "greenfield",
+      "tokenBudget": 200000
+    },
+    "at": "2026-10-15T21:25:14.814734Z"
+  },
+  {
+    "seq": 2,
+    "nodeId": "requirements",
+    "type": "NODE_TRANSITION",
+    "from": "PENDING",
+    "to": "RUNNING",
+    "payload": {
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:14.84067Z"
+  },
+  {
+    "seq": 3,
+    "nodeId": "requirements",
+    "type": "LLM_USAGE",
+    "payload": {
+      "attempt": 1,
+      "runTotal": 277,
+      "inputTokens": 102,
+      "outputTokens": 175
+    },
+    "at": "2026-10-15T21:25:14.863658Z"
+  },
+  {
+    "seq": 4,
+    "nodeId": "requirements",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "requirements-ids",
+      "type": "requirements",
+      "phase": "exit",
+      "reason": "3 requirements with acceptance criteria: [REQ-001, REQ-002, REQ-003]",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:14.86888Z"
+  },
+  {
+    "seq": 5,
+    "nodeId": "requirements",
+    "type": "ARTIFACT_RECORDED",
+    "payload": {
+      "name": "requirements.md",
+      "contentHash": "24ff91924712bb9cc4f98be240cb861c91cb30cc6751f374ca287f2ccfa7e021"
+    },
+    "at": "2026-10-15T21:25:14.906152Z"
+  },
+  {
+    "seq": 6,
+    "nodeId": "requirements",
+    "type": "NODE_TRANSITION",
+    "from": "RUNNING",
+    "to": "DONE",
+    "payload": {
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:14.948904Z"
+  },
+  {
+    "seq": 7,
+    "nodeId": "impact-analysis",
+    "type": "NODE_TRANSITION",
+    "from": "PENDING",
+    "to": "DONE",
+    "payload": {
+      "attempt": 0
+    },
+    "at": "2026-10-15T21:25:14.953953Z"
+  },
+  {
+    "seq": 8,
+    "nodeId": "impact-analysis",
+    "type": "NODE_SKIPPED",
+    "payload": {
+      "reason": "stage runs only for brownfield runs"
+    },
+    "at": "2026-10-15T21:25:14.955405Z"
+  },
+  {
+    "seq": 9,
+    "nodeId": "design",
+    "type": "NODE_TRANSITION",
+    "from": "PENDING",
+    "to": "RUNNING",
+    "payload": {
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:14.956054Z"
+  },
+  {
+    "seq": 10,
+    "nodeId": "design",
+    "type": "LLM_USAGE",
+    "payload": {
+      "attempt": 1,
+      "runTotal": 697,
+      "inputTokens": 290,
+      "outputTokens": 130
+    },
+    "at": "2026-10-15T21:25:14.990115Z"
+  },
+  {
+    "seq": 11,
+    "nodeId": "design",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "human-approval",
+      "type": "approval",
+      "phase": "exit",
+      "reason": "A human approves the design before anything is built",
+      "attempt": 1,
+      "outcome": "NEEDS_APPROVAL"
+    },
+    "at": "2026-10-15T21:25:14.996875Z"
+  },
+  {
+    "seq": 12,
+    "nodeId": "design",
+    "type": "ARTIFACT_RECORDED",
+    "payload": {
+      "name": "design.md",
+      "contentHash": "77d14866c5462262f6ea2627b245f7a5ce2d7f3569b4c955f6207e7bb4340cec"
+    },
+    "at": "2026-10-15T21:25:15.030473Z"
+  },
+  {
+    "seq": 13,
+    "nodeId": "design",
+    "type": "NODE_TRANSITION",
+    "from": "RUNNING",
+    "to": "WAITING_APPROVAL",
+    "payload": {
+      "kind": "APPROVAL",
+      "attempt": 1,
+      "reasons": [
+        "human-approval: A human approves the design before anything is built"
+      ]
+    },
+    "at": "2026-10-15T21:25:15.061811Z"
+  },
+  {
+    "seq": 14,
+    "nodeId": "design",
+    "type": "APPROVAL_DECIDED",
+    "payload": {
+      "by": "sai",
+      "kind": "APPROVAL",
+      "waitMs": 868,
+      "decision": "APPROVED"
+    },
+    "at": "2026-10-15T21:25:15.930302Z"
+  },
+  {
+    "seq": 15,
+    "nodeId": "design",
+    "type": "NODE_TRANSITION",
+    "from": "WAITING_APPROVAL",
+    "to": "DONE",
+    "payload": {
+      "attempt": 1,
+      "approvedBy": "sai"
+    },
+    "at": "2026-10-15T21:25:15.933415Z"
+  },
+  {
+    "seq": 16,
+    "nodeId": "implement",
+    "type": "NODE_TRANSITION",
+    "from": "PENDING",
+    "to": "RUNNING",
+    "payload": {
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:15.936094Z"
+  },
+  {
+    "seq": 17,
+    "nodeId": "test-plan",
+    "type": "NODE_TRANSITION",
+    "from": "PENDING",
+    "to": "RUNNING",
+    "payload": {
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:15.9377Z"
+  },
+  {
+    "seq": 18,
+    "nodeId": "implement",
+    "type": "LLM_USAGE",
+    "payload": {
+      "attempt": 1,
+      "runTotal": 1316,
+      "inputTokens": 240,
+      "outputTokens": 379
+    },
+    "at": "2026-10-15T21:25:15.956872Z"
+  },
+  {
+    "seq": 19,
+    "nodeId": "test-plan",
+    "type": "LLM_USAGE",
+    "payload": {
+      "attempt": 1,
+      "runTotal": 1626,
+      "inputTokens": 234,
+      "outputTokens": 76
+    },
+    "at": "2026-10-15T21:25:15.973011Z"
+  },
+  {
+    "seq": 20,
+    "nodeId": "test-plan",
+    "type": "ARTIFACT_RECORDED",
+    "payload": {
+      "name": "test-plan.md",
+      "contentHash": "9924d83a745048943d56fb99d0c585ea5d31ef2ec7f6fb944ce26fc458b1e220"
+    },
+    "at": "2026-10-15T21:25:16.029074Z"
+  },
+  {
+    "seq": 21,
+    "nodeId": "test-plan",
+    "type": "NODE_TRANSITION",
+    "from": "RUNNING",
+    "to": "DONE",
+    "payload": {
+      "commit": "bd68dc169c034d4ea1e7508ae0eb6bd059357242",
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:16.129652Z"
+  },
+  {
+    "seq": 22,
+    "nodeId": "implement",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "compile",
+      "type": "command",
+      "phase": "exit",
+      "reason": "'mvn -B -q -DskipTests compile' succeeded in 3.1s",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:19.104803Z"
+  },
+  {
+    "seq": 23,
+    "nodeId": "implement",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "tests-pass",
+      "type": "command",
+      "phase": "exit",
+      "reason": "'mvn -B -q test' succeeded in 2.8s",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:21.948209Z"
+  },
+  {
+    "seq": 24,
+    "nodeId": "implement",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "allowed-paths",
+      "type": "allowed-paths",
+      "phase": "exit",
+      "reason": "all changes within [src/main/**]",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:22.01168Z"
+  },
+  {
+    "seq": 25,
+    "nodeId": "implement",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "secret-scan",
+      "type": "secret-scan",
+      "phase": "exit",
+      "reason": "no secrets in 38 added lines",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:22.230852Z"
+  },
+  {
+    "seq": 26,
+    "nodeId": "implement",
+    "type": "ARTIFACT_RECORDED",
+    "payload": {
+      "name": "implement.md",
+      "contentHash": "84dee04eb41ee8165a44701b3cfbc24beec288ed5eab465d62595b036e0bc1d3"
+    },
+    "at": "2026-10-15T21:25:22.279865Z"
+  },
+  {
+    "seq": 27,
+    "nodeId": "implement",
+    "type": "NODE_TRANSITION",
+    "from": "RUNNING",
+    "to": "DONE",
+    "payload": {
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:22.321738Z"
+  },
+  {
+    "seq": 28,
+    "nodeId": "test",
+    "type": "NODE_TRANSITION",
+    "from": "PENDING",
+    "to": "RUNNING",
+    "payload": {
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:22.32427Z"
+  },
+  {
+    "seq": 29,
+    "nodeId": "test",
+    "type": "LLM_USAGE",
+    "payload": {
+      "attempt": 1,
+      "runTotal": 2213,
+      "inputTokens": 222,
+      "outputTokens": 365
+    },
+    "at": "2026-10-15T21:25:22.349623Z"
+  },
+  {
+    "seq": 30,
+    "nodeId": "test",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "tests-pass",
+      "type": "command",
+      "phase": "exit",
+      "reason": "'mvn -B -q test' succeeded in 2.6s",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:24.940626Z"
+  },
+  {
+    "seq": 31,
+    "nodeId": "test",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "coverage",
+      "type": "coverage",
+      "phase": "exit",
+      "reason": "line coverage 100.0% (minimum 80.0%)",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:24.950872Z"
+  },
+  {
+    "seq": 32,
+    "nodeId": "test",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "allowed-paths",
+      "type": "allowed-paths",
+      "phase": "exit",
+      "reason": "all changes within [src/test/**]",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:25.037096Z"
+  },
+  {
+    "seq": 33,
+    "nodeId": "test",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "secret-scan",
+      "type": "secret-scan",
+      "phase": "exit",
+      "reason": "no secrets in 41 added lines",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:25.087092Z"
+  },
+  {
+    "seq": 34,
+    "nodeId": "test",
+    "type": "ARTIFACT_RECORDED",
+    "payload": {
+      "name": "test.md",
+      "contentHash": "a487785d73c90855532438be055449ca525091a8f96880143cc54a95b34190f0"
+    },
+    "at": "2026-10-15T21:25:25.135839Z"
+  },
+  {
+    "seq": 35,
+    "nodeId": "test",
+    "type": "NODE_TRANSITION",
+    "from": "RUNNING",
+    "to": "DONE",
+    "payload": {
+      "commit": "14b1bfc6813b252120e4a97fdc8d7062b7973c5b",
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:25.291257Z"
+  },
+  {
+    "seq": 36,
+    "nodeId": "docs",
+    "type": "NODE_TRANSITION",
+    "from": "PENDING",
+    "to": "RUNNING",
+    "payload": {
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:25.295052Z"
+  },
+  {
+    "seq": 37,
+    "nodeId": "docs",
+    "type": "LLM_USAGE",
+    "payload": {
+      "attempt": 1,
+      "runTotal": 2378,
+      "inputTokens": 126,
+      "outputTokens": 39
+    },
+    "at": "2026-10-15T21:25:25.430848Z"
+  },
+  {
+    "seq": 38,
+    "nodeId": "docs",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "allowed-paths",
+      "type": "allowed-paths",
+      "phase": "exit",
+      "reason": "all changes within [docs/**, README.md]",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:25.471722Z"
+  },
+  {
+    "seq": 39,
+    "nodeId": "docs",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "secret-scan",
+      "type": "secret-scan",
+      "phase": "exit",
+      "reason": "no secrets in 4 added lines",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:25.581214Z"
+  },
+  {
+    "seq": 40,
+    "nodeId": "docs",
+    "type": "ARTIFACT_RECORDED",
+    "payload": {
+      "name": "docs.md",
+      "contentHash": "2b22eeab23485349913f5d979e3f034a62869e50d79dca1b0b86b1f9fe76f735"
+    },
+    "at": "2026-10-15T21:25:25.623627Z"
+  },
+  {
+    "seq": 41,
+    "nodeId": "docs",
+    "type": "NODE_TRANSITION",
+    "from": "RUNNING",
+    "to": "DONE",
+    "payload": {
+      "commit": "9d90c729c61a973af2ae1c0c8c471ba8a6c8fe96",
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:25.704139Z"
+  },
+  {
+    "seq": 42,
+    "nodeId": "release",
+    "type": "NODE_TRANSITION",
+    "from": "PENDING",
+    "to": "RUNNING",
+    "payload": {
+      "attempt": 1
+    },
+    "at": "2026-10-15T21:25:25.70711Z"
+  },
+  {
+    "seq": 43,
+    "nodeId": "release",
+    "type": "LLM_USAGE",
+    "payload": {
+      "attempt": 1,
+      "runTotal": 2581,
+      "inputTokens": 155,
+      "outputTokens": 48
+    },
+    "at": "2026-10-15T21:25:25.722658Z"
+  },
+  {
+    "seq": 44,
+    "nodeId": "release",
+    "type": "GATE_EVALUATED",
+    "payload": {
+      "gate": "allowed-paths",
+      "type": "allowed-paths",
+      "phase": "exit",
+      "reason": "all changes within [docs/**]",
+      "attempt": 1,
+      "outcome": "PASS"
+    },
+    "at": "2026-10-15T21:25:25.772563Z"
+  },
+  {
+    "seq": 45,
+    "nodeId": "release",
+    "type": "POLICY_MATCHED",
+    "payload": {
+      "rule": "merge",
+      "matches": [
+        "action:merge"
+      ]
+    },
+    "at": "2026-10-15T21:25:25.801319Z"
+  },
+  {
+    "seq": 46,
+    "nodeId": "release",
+    "type": "ARTIFACT_RECORDED",
+    "payload": {
+      "name": "release.md",
+      "contentHash": "edb322b93860efddd43c91e89bcf67ec7d689e228e2418bd64db8eea4fa31264"
+    },
+    "at": "2026-10-15T21:25:25.807106Z"
+  },
+  {
+    "seq": 47,
+    "nodeId": "release",
+    "type": "NODE_TRANSITION",
+    "from": "RUNNING",
+    "to": "WAITING_APPROVAL",
+    "payload": {
+      "kind": "APPROVAL",
+      "attempt": 1,
+      "reasons": [
+        "policy 'merge' matched action:merge"
+      ]
+    },
+    "at": "2026-10-15T21:25:25.839147Z"
+  },
+  {
+    "seq": 48,
+    "nodeId": "release",
+    "type": "APPROVAL_DECIDED",
+    "payload": {
+      "by": "sai",
+      "kind": "APPROVAL",
+      "waitMs": 284,
+      "decision": "APPROVED"
+    },
+    "at": "2026-10-15T21:25:26.123784Z"
+  },
+  {
+    "seq": 49,
+    "nodeId": "release",
+    "type": "MERGED",
+    "payload": {
+      "by": "sai",
+      "branch": "run/516df4b5-487c-4f22-a007-9137aa84f72d"
+    },
+    "at": "2026-10-15T21:25:26.20754Z"
+  },
+  {
+    "seq": 50,
+    "nodeId": "release",
+    "type": "NODE_TRANSITION",
+    "from": "WAITING_APPROVAL",
+    "to": "DONE",
+    "payload": {
+      "attempt": 1,
+      "approvedBy": "sai"
+    },
+    "at": "2026-10-15T21:25:26.209951Z"
+  },
+  {
+    "seq": 51,
+    "type": "RUN_FINISHED",
+    "payload": {
+      "status": "SUCCEEDED",
+      "tokensUsed": 2581
+    },
+    "at": "2026-10-15T21:25:26.216545Z"
+  }
+]

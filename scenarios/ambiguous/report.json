@@ -1,0 +1,321 @@
+{
+  "runId": "cbbfe6ad-7544-4ceb-85b8-fb5dafba1c43",
+  "scenario": "ambiguous",
+  "mode": "GREENFIELD",
+  "status": "SUCCEEDED",
+  "request": "Make the short links better for our marketing team.",
+  "branch": "run/cbbfe6ad-7544-4ceb-85b8-fb5dafba1c43",
+  "startedAt": "2026-10-15T21:25:45.785704Z",
+  "finishedAt": "2026-10-15T21:25:59.203758Z",
+  "durationMs": 13418,
+  "nodes": [
+    {
+      "id": "requirements",
+      "status": "DONE",
+      "attempts": 3,
+      "durationMs": 191
+    },
+    {
+      "id": "impact-analysis",
+      "status": "DONE",
+      "attempts": 0
+    },
+    {
+      "id": "design",
+      "status": "DONE",
+      "attempts": 2,
+      "durationMs": 828
+    },
+    {
+      "id": "implement",
+      "status": "DONE",
+      "attempts": 1,
+      "durationMs": 5253
+    },
+    {
+      "id": "test-plan",
+      "status": "DONE",
+      "attempts": 1,
+      "durationMs": 158
+    },
+    {
+      "id": "test",
+      "status": "DONE",
+      "attempts": 1,
+      "durationMs": 2674
+    },
+    {
+      "id": "docs",
+      "status": "DONE",
+      "attempts": 1,
+      "durationMs": 242
+    },
+    {
+      "id": "release",
+      "status": "DONE",
+      "attempts": 1,
+      "durationMs": 1050
+    }
+  ],
+  "gates": [
+    {
+      "nodeId": "requirements",
+      "gate": "requirements-ids",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "2 requirements with acceptance criteria: [REQ-001, REQ-002]",
+      "attempt": 2
+    },
+    {
+      "nodeId": "design",
+      "gate": "human-approval",
+      "phase": "exit",
+      "outcome": "NEEDS_APPROVAL",
+      "reason": "A human approves the design before anything is built",
+      "attempt": 1
+    },
+    {
+      "nodeId": "implement",
+      "gate": "compile",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "'mvn -B -q -DskipTests compile' succeeded in 2.6s",
+      "attempt": 1
+    },
+    {
+      "nodeId": "implement",
+      "gate": "tests-pass",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "'mvn -B -q test' succeeded in 2.5s",
+      "attempt": 1
+    },
+    {
+      "nodeId": "implement",
+      "gate": "allowed-paths",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "all changes within [src/main/**]",
+      "attempt": 1
+    },
+    {
+      "nodeId": "implement",
+      "gate": "secret-scan",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "no secrets in 28 added lines",
+      "attempt": 1
+    },
+    {
+      "nodeId": "test",
+      "gate": "tests-pass",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "'mvn -B -q test' succeeded in 2.5s",
+      "attempt": 1
+    },
+    {
+      "nodeId": "test",
+      "gate": "coverage",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "line coverage 100.0% (minimum 80.0%)",
+      "attempt": 1
+    },
+    {
+      "nodeId": "test",
+      "gate": "allowed-paths",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "all changes within [src/test/**]",
+      "attempt": 1
+    },
+    {
+      "nodeId": "test",
+      "gate": "secret-scan",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "no secrets in 34 added lines",
+      "attempt": 1
+    },
+    {
+      "nodeId": "docs",
+      "gate": "allowed-paths",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "all changes within [docs/**, README.md]",
+      "attempt": 1
+    },
+    {
+      "nodeId": "docs",
+      "gate": "secret-scan",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "no secrets in 5 added lines",
+      "attempt": 1
+    },
+    {
+      "nodeId": "release",
+      "gate": "allowed-paths",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "all changes within [docs/**]",
+      "attempt": 1
+    },
+    {
+      "nodeId": "requirements",
+      "gate": "requirements-ids",
+      "phase": "exit",
+      "outcome": "PASS",
+      "reason": "3 requirements with acceptance criteria: [REQ-001, REQ-002, REQ-003]",
+      "attempt": 3
+    },
+    {
+      "nodeId": "design",
+      "gate": "human-approval",
+      "phase": "exit",
+      "outcome": "NEEDS_APPROVAL",
+      "reason": "A human approves the design before anything is built",
+      "attempt": 2
+    }
+  ],
+  "approvals": [
+    {
+      "nodeId": "requirements",
+      "kind": "CLARIFICATION",
+      "decision": "ANSWERED",
+      "by": "sai",
+      "waitMs": 1026
+    },
+    {
+      "nodeId": "design",
+      "kind": "APPROVAL",
+      "decision": "APPROVED",
+      "by": "sai",
+      "waitMs": 677
+    },
+    {
+      "nodeId": "release",
+      "kind": "APPROVAL",
+      "decision": "APPROVED",
+      "by": "sai",
+      "waitMs": 857
+    },
+    {
+      "nodeId": "design",
+      "kind": "APPROVAL",
+      "decision": "APPROVED",
+      "by": "sai",
+      "waitMs": 703
+    }
+  ],
+  "retries": 0,
+  "rollbacks": [],
+  "clarifications": [
+    {
+      "questionId": "Q1",
+      "question": "Do marketers need custom vanity aliases such as /spring-sale, and what characters are allowed?",
+      "answer": "Yes: aliases of 3-32 characters from a-z, 0-9 and hyphen."
+    },
+    {
+      "questionId": "Q2",
+      "question": "Should campaign links expire automatically when the campaign ends?",
+      "assumption": "Unanswered \u2014 treated as out of scope for this run."
+    },
+    {
+      "questionId": "Q3",
+      "question": "Which analytics matter most \u2014 total clicks or referrers?",
+      "assumption": "Unanswered \u2014 treated as out of scope for this run."
+    }
+  ],
+  "artifacts": [
+    {
+      "nodeId": "requirements",
+      "name": "requirements.md",
+      "contentHash": "f747c65167811d34e67d0c3962322fe5e5a9cd64a5e543b82aab821a1b37b5d6",
+      "parentHashes": []
+    },
+    {
+      "nodeId": "requirements",
+      "name": "clarifications.md",
+      "contentHash": "794c83fb4f3b2822b7a8a6beb9bff26b11be3a04e0c7ba5a95e0d81a237bcdf4",
+      "parentHashes": []
+    },
+    {
+      "nodeId": "requirements",
+      "name": "requirements.md",
+      "contentHash": "deeb25917bf2ea3018df7f8abe794ed6823b974bfb999012dd8de7ca371f263c",
+      "parentHashes": []
+    },
+    {
+      "nodeId": "design",
+      "name": "design.md",
+      "contentHash": "4d9844619a08a03cf48263bab7361cd1a1f2f35d3530a8d82b4b91a73f0a4239",
+      "parentHashes": [
+        "794c83fb4f3b2822b7a8a6beb9bff26b11be3a04e0c7ba5a95e0d81a237bcdf4",
+        "deeb25917bf2ea3018df7f8abe794ed6823b974bfb999012dd8de7ca371f263c"
+      ]
+    },
+    {
+      "nodeId": "test-plan",
+      "name": "test-plan.md",
+      "contentHash": "273113cd32679b3931c28c7481caf94a9358e0b28713b45ce50932d6e0fc1632",
+      "parentHashes": [
+        "4d9844619a08a03cf48263bab7361cd1a1f2f35d3530a8d82b4b91a73f0a4239"
+      ]
+    },
+    {
+      "nodeId": "implement",
+      "name": "implement.md",
+      "contentHash": "adadee72891917749e89c5f35b1a345f635699e1791cdbf4f839cfad27796c6c",
+      "parentHashes": [
+        "4d9844619a08a03cf48263bab7361cd1a1f2f35d3530a8d82b4b91a73f0a4239"
+      ]
+    },
+    {
+      "nodeId": "test",
+      "name": "test.md",
+      "contentHash": "0811d2dc7353f60101c66410445859c1908b5793e886c1ae5def11197971f0a3",
+      "parentHashes": [
+        "273113cd32679b3931c28c7481caf94a9358e0b28713b45ce50932d6e0fc1632",
+        "adadee72891917749e89c5f35b1a345f635699e1791cdbf4f839cfad27796c6c"
+      ]
+    },
+    {
+      "nodeId": "docs",
+      "name": "docs.md",
+      "contentHash": "2b22eeab23485349913f5d979e3f034a62869e50d79dca1b0b86b1f9fe76f735",
+      "parentHashes": [
+        "0811d2dc7353f60101c66410445859c1908b5793e886c1ae5def11197971f0a3"
+      ]
+    },
+    {
+      "nodeId": "release",
+      "name": "release.md",
+      "contentHash": "7fabb0988092c2e1992367e4310542d47c3a1e3439f2f6ae81318b77b1b3d6fa",
+      "parentHashes": [
+        "0811d2dc7353f60101c66410445859c1908b5793e886c1ae5def11197971f0a3",
+        "2b22eeab23485349913f5d979e3f034a62869e50d79dca1b0b86b1f9fe76f735"
+      ]
+    },
+    {
+      "nodeId": "requirements",
+      "name": "requirements.md",
+      "contentHash": "3b34c125944a718385af62050c94d7ad4da12b06445d50d35b47b0c0d3ab9c06",
+      "parentHashes": []
+    },
+    {
+      "nodeId": "design",
+      "name": "design.md",
+      "contentHash": "4d9844619a08a03cf48263bab7361cd1a1f2f35d3530a8d82b4b91a73f0a4239",
+      "parentHashes": [
+        "3b34c125944a718385af62050c94d7ad4da12b06445d50d35b47b0c0d3ab9c06"
+      ]
+    }
+  ],
+  "tokens": {
+    "input": 1789,
+    "output": 1723,
+    "budget": 200000
+  }
+}

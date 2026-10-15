@@ -69,6 +69,13 @@ public class ShortUrlService {
         this.exhausted = Counter.builder("shortener.code.exhausted")
                 .description("Creates that failed after every attempt collided (SHORT-002)")
                 .register(meters);
+        // Pre-register labelled counters at zero so dashboards and rate() work before the first event.
+        for (String outcome : new String[] {"found", "not_found", "expired"}) {
+            meters.counter("shortener.redirects", "outcome", outcome);
+        }
+        for (String kind : new String[] {"generated", "alias"}) {
+            meters.counter("shortener.urls.issued", "kind", kind);
+        }
         this.clickFailures = Counter.builder("shortener.click.record.failures")
                 .description("Clicks that could not be stored; the redirect still succeeded (SHORT-007)")
                 .register(meters);
@@ -91,7 +98,7 @@ public class ShortUrlService {
         ShortUrl created = alias != null
                 ? createWithAlias(alias, longUrl, now, expiresAt)
                 : createWithGeneratedCode(longUrl, now, expiresAt);
-        meters.counter("shortener.urls.created", "kind", alias != null ? "alias" : "generated")
+        meters.counter("shortener.urls.issued", "kind", alias != null ? "alias" : "generated")
                 .increment();
         return created;
     }
