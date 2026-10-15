@@ -1,0 +1,34 @@
+# Build
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Secrets / local config
+.env
+*.local.yml
+*.pem
+*.key
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Orchestrator run workspaces (per-run git checkouts)
+workspaces/
+
+# UI
+ui/node_modules/
+ui/dist/
+ui/.angular/

@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.16</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>io.agentic</groupId>
+    <artifactId>agentic-sdlc-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Agentic SDLC Orchestrator</name>
+    <description>Agentic SDLC orchestrator driving a URL shortener through a governed lifecycle</description>
+
+    <modules>
+        <module>common</module>
+        <module>shortener</module>
+        <module>orchestrator</module>
+    </modules>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!--
+          Security overrides of Boot-managed versions. Boot 3.5 left OSS support in
+          June 2026, so its last BOM still ships known CVEs. Remove each override once
+          the Boot BOM catches up (see DECISIONS.md, ADR-004).
+        -->
+        <jackson-bom.version>2.21.7</jackson-bom.version>
+        <tomcat.version>10.1.60</tomcat.version>
+        <log4j2.version>2.25.5</log4j2.version>
+        <!-- CVE-2025-48924, via springdoc → swagger-core. -->
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <!-- CVE-2025-66453, test-only via swagger-request-validator → json-schema-validator. -->
+        <rhino.version>1.7.15.1</rhino.version>
+
+        <springdoc.version>2.8.17</springdoc.version>
+        <openapi-generator.version>7.24.0</openapi-generator.version>
+        <swagger-request-validator.version>2.46.1</swagger-request-validator.version>
+
+        <spotless.version>2.46.1</spotless.version>
+        <palantir-java-format.version>2.74.0</palantir-java-format.version>
+        <checkstyle-plugin.version>3.6.0</checkstyle-plugin.version>
+        <checkstyle.version>10.26.1</checkstyle.version>
+        <jacoco.version>0.8.13</jacoco.version>
+
+        <!-- Coverage gate: build fails below these ratios (per module). -->
+        <jacoco.line.minimum>0.80</jacoco.line.minimum>
+        <jacoco.branch.minimum>0.70</jacoco.branch.minimum>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.agentic</groupId>
+                <artifactId>common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mozilla</groupId>
+                <artifactId>rhino</artifactId>
+                <version>${rhino.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.atlassian.oai</groupId>
+                <artifactId>swagger-request-validator-mockmvc</artifactId>
+                <version>${swagger-request-validator.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.version}</version>
+                </plugin>
+
+                <!--
+                  Report tests by @DisplayName ("SHORT-007: ...") so scripts/traceability.py
+                  can map passing tests to requirement IDs from target/surefire-reports.
+                -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <configuration>
+                        <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
+                            <usePhrasedTestCaseMethodName>true</usePhrasedTestCaseMethodName>
+                            <usePhrasedTestSuiteClassName>true</usePhrasedTestSuiteClassName>
+                        </statelessTestsetReporter>
+                    </configuration>
+                </plugin>
+
+                <!--
+                  Contract-first: API interfaces + models are generated from the hand-written
+                  OpenAPI spec into target/generated-sources. Controllers implement the
+                  interfaces, so any drift from the spec is a compile error.
+                -->
+                <plugin>
+                    <groupId>org.openapitools</groupId>
+                    <artifactId>openapi-generator-maven-plugin</artifactId>
+                    <version>${openapi-generator.version}</version>
+                    <configuration>
+                        <generatorName>spring</generatorName>
+                        <library>spring-boot</library>
+                        <generateApiTests>false</generateApiTests>
+                        <generateModelTests>false</generateModelTests>
+                        <generateApiDocumentation>false</generateApiDocumentation>
+                        <generateModelDocumentation>false</generateModelDocumentation>
+                        <generateSupportingFiles>false</generateSupportingFiles>
+                        <configOptions>
+                            <interfaceOnly>true</interfaceOnly>
+                            <useSpringBoot3>true</useSpringBoot3>
+                            <useJakartaEe>true</useJakartaEe>
+                            <skipDefaultInterface>true</skipDefaultInterface>
+                            <openApiNullable>false</openApiNullable>
+                            <useBeanValidation>true</useBeanValidation>
+                            <performBeanValidation>true</performBeanValidation>
+                            <useTags>true</useTags>
+                            <documentationProvider>none</documentationProvider>
+                            <annotationLibrary>none</annotationLibrary>
+                            <dateLibrary>java8</dateLibrary>
+                            <sourceFolder>src/gen/java</sourceFolder>
+                        </configOptions>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <!--
+              Exposes the specs folder as a percent-encoded file URI (${specs.uri}). The
+              OpenAPI 3.1 parser builds java.net.URIs from the spec path and rejects raw
+              spaces, so checkouts under paths like "AI Project/" would otherwise fail.
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>specs-uri</id>
+                        <goals>
+                            <goal>regex-property</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                        <configuration>
+                            <name>specs.uri</name>
+                            <value>file://${maven.multiModuleProjectDirectory}/specs</value>
+                            <regex>\x20</regex>
+                            <replacement>%20</replacement>
+                            <failIfNoMatch>false</failIfNoMatch>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Formatting: `./mvnw spotless:apply` fixes, `verify` fails on drift. -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <java>
+                        <!-- Hand-written code only; generated sources live under target/. -->
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                        </includes>
+                        <palantirJavaFormat>
+                            <version>${palantir-java-format.version}</version>
+                        </palantirJavaFormat>
+                        <removeUnusedImports/>
+                        <importOrder/>
+                        <trimTrailingWhitespace/>
+                        <endWithNewline/>
+                    </java>
+                    <pom>
+                        <sortPom>
+                            <expandEmptyElements>false</expandEmptyElements>
+                            <keepBlankLines>true</keepBlankLines>
+                            <nrOfIndentSpace>4</nrOfIndentSpace>
+                            <predefinedSortOrder>recommended_2008_06</predefinedSortOrder>
+                            <sortDependencies/>
+                            <sortPlugins/>
+                        </sortPom>
+                    </pom>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>verify</phase>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Static checks Spotless can't express (naming, star imports, empty catch, etc.). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${checkstyle-plugin.version}</version>
+                <configuration>
+                    <configLocation>${maven.multiModuleProjectDirectory}/config/checkstyle/checkstyle.xml</configLocation>
+                    <consoleOutput>true</consoleOutput>
+                    <failOnViolation>true</failOnViolation>
+                    <violationSeverity>warning</violationSeverity>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    <!-- Pin to hand-written sources so generated code is never linted. -->
+                    <sourceDirectories>
+                        <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
+                    </sourceDirectories>
+                    <testSourceDirectories>
+                        <testSourceDirectory>${project.build.testSourceDirectory}</testSourceDirectory>
+                    </testSourceDirectories>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${checkstyle.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>validate</phase>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <!-- Boot entry points only call SpringApplication.run. -->
+                        <exclude>**/*Application.class</exclude>
+                        <!-- OpenAPI-generated interfaces/models (io.agentic.*.generated.*). -->
+                        <exclude>**/generated/**</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                        <phase>verify</phase>
+                    </execution>
+                    <execution>
+                        <id>coverage-gate</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>verify</phase>
+                        <configuration>
+                            <haltOnFailure>true</haltOnFailure>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.line.minimum}</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.branch.minimum}</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

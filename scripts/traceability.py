@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+"""Requirement → test traceability check.
+
+Cross-references requirement IDs declared in specs/**/requirements.md against the tests
+that actually ran, read from Surefire XML reports (**/target/surefire-reports/TEST-*.xml).
+A test covers a requirement when its @DisplayName starts with the ID, e.g.
+"SHORT-007: records the referrer" (several IDs: "SHORT-001, SHORT-003: ...").
+
+Writes docs/traceability.md and exits non-zero when:
+  * a requirement with Status: Implemented has no passing test,
+  * a test references a requirement ID that does not exist, or
+  * no Surefire reports are found (tests must run first: ./mvnw verify).
+
+Planned requirements without tests are reported as pending; Retired ones are ignored.
+Standard library only, so it runs on any CI image with Python 3.9+.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+import xml.etree.ElementTree as ET
+from collections import defaultdict
+from dataclasses import dataclass, field
+from pathlib import Path
+
+REQ_HEADING = re.compile(r"^###\s+([A-Z][A-Z0-9]*-\d{3})\s+[—-]\s+(.+?)\s*$")
+REQ_STATUS = re.compile(r"^Status:\s*(\w+)\s*$")
+TEST_IDS = re.compile(r"^((?:[A-Z][A-Z0-9]*-\d{3})(?:\s*,\s*[A-Z][A-Z0-9]*-\d{3})*)\s*:")
+VALID_STATUSES = {"Planned", "Implemented", "Retired"}
+
+
+@dataclass
+class Requirement:
+    id: str
+    title: str
+    status: str
+    source: Path
+
+
+@dataclass
+class TestResult:
+    suite: str
+    name: str
+    passed: bool
+
+
+@dataclass
+class Report:
+    requirements: list[Requirement]
+    tests_by_req: dict[str, list[TestResult]] = field(default_factory=lambda: defaultdict(list))
+    unknown_refs: list[tuple[str, TestResult]] = field(default_factory=list)
+    untraced_tests: int = 0
+    total_tests: int = 0
+    errors: list[str] = field(default_factory=list)
+
+
+def parse_requirements(specs_dir: Path) -> tuple[list[Requirement], list[str]]:
+    reqs: list[Requirement] = []
+    errors: list[str] = []
+    for path in sorted(specs_dir.rglob("requirements.md")):
+        current: Requirement | None = None
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if m := REQ_HEADING.match(line):
+                current = Requirement(m.group(1), m.group(2), "", path)
+                reqs.append(current)
+            elif current and not current.status and (m := REQ_STATUS.match(line)):
+                current.status = m.group(1)
+    seen: set[str] = set()
+    for r in reqs:
+        if r.id in seen:
+            errors.append(f"{r.id}: declared more than once")
+        seen.add(r.id)
+        if r.status not in VALID_STATUSES:
+            errors.append(f"{r.id}: missing or invalid 'Status:' (got {r.status or 'none'!r})")
+    return reqs, errors
+
+
+def parse_reports(root: Path) -> list[TestResult]:
+    results: list[TestResult] = []
+    for xml_file in sorted(root.glob("**/target/surefire-reports/TEST-*.xml")):
+        suite = ET.parse(xml_file).getroot()
+        for case in suite.iter("testcase"):
+            outcome = {child.tag for child in case}
+            passed = not outcome & {"failure", "error", "skipped"}
+            results.append(TestResult(case.get("classname", suite.get("name", "?")), case.get("name", ""), passed))
+    return results
+
+
+def build_report(root: Path) -> Report:
+    reqs, errors = parse_requirements(root / "specs")
+    report = Report(reqs, errors=errors)
+    known = {r.id for r in reqs}
+    tests = parse_reports(root)
+    report.total_tests = len(tests)
+    if not tests:
+        report.errors.append("no Surefire reports found — run ./mvnw verify first")
+    for t in tests:
+        m = TEST_IDS.match(t.name)
+        if not m:
+            report.untraced_tests += 1
+            continue
+        for req_id in (part.strip() for part in m.group(1).split(",")):
+            if req_id in known:
+                report.tests_by_req[req_id].append(t)
+            else:
+                report.unknown_refs.append((req_id, t))
+    for req_id, t in report.unknown_refs:
+        report.errors.append(f"{t.suite} › {t.name!r} references unknown requirement {req_id}")
+    for r in reqs:
+        if r.status == "Implemented" and not any(t.passed for t in report.tests_by_req[r.id]):
+            report.errors.append(f"{r.id} is Implemented but has no passing test")
+    return report
+
+
+def coverage_state(r: Requirement, tests: list[TestResult]) -> str:
+    if r.status == "Retired":
+        return "➖ retired"
+    if tests and all(t.passed for t in tests):
+        return "✅ covered"
+    if tests:
+        return "❌ failing"
+    return "❌ **missing**" if r.status == "Implemented" else "⏳ pending"
+
+
+def render_markdown(report: Report, root: Path) -> str:
+    covered = sum(1 for r in report.requirements if any(t.passed for t in report.tests_by_req[r.id]))
+    active = sum(1 for r in report.requirements if r.status != "Retired")
+    lines = [
+        "# Requirement Traceability",
+        "",
+        "<!-- Generated by scripts/traceability.py — do not edit by hand. -->",
+        "",
+        f"**{covered}/{active}** active requirements have at least one passing test · "
+        f"{report.total_tests} tests ran · {report.untraced_tests} not linked to a requirement "
+        "(infrastructure / utility tests).",
+        "",
+        "| Requirement | Title | Status | Coverage | Tests |",
+        "|---|---|---|---|---|",
+    ]
+    for r in report.requirements:
+        tests = report.tests_by_req[r.id]
+        test_cell = "<br>".join(
+            f"{'✔' if t.passed else '✘'} `{t.suite.rsplit('.', 1)[-1]}` — {t.name.split(':', 1)[-1].strip()}"
+            for t in tests
+        ) or "—"
+        spec = r.source.relative_to(root).as_posix()
+        lines.append(f"| [{r.id}](../{spec}) | {r.title} | {r.status} | {coverage_state(r, tests)} | {test_cell} |")
+    if report.errors:
+        lines += ["", "## Problems", ""] + [f"- {e}" for e in report.errors]
+    return "\n".join(lines) + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent)
+    parser.add_argument("--output", type=Path, help="default: <root>/docs/traceability.md")
+    args = parser.parse_args(argv)
+
+    root = args.root.resolve()
+    output = args.output or root / "docs" / "traceability.md"
+    report = build_report(root)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(render_markdown(report, root), encoding="utf-8")
+
+    pending = sum(1 for r in report.requirements if r.status == "Planned" and not report.tests_by_req[r.id])
+    print(f"traceability: {len(report.requirements)} requirements, {report.total_tests} tests, "
+          f"{pending} planned without tests → {output.relative_to(root)}")
+    for e in report.errors:
+        print(f"::error::{e}", file=sys.stderr)
+    return 1 if report.errors else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

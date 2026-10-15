@@ -1,0 +1,10 @@
+# Minimal config for setup. App scrape jobs (/actuator/prometheus on :8080 and :8081)
+# are added in the "Observability wiring" task once Micrometer is on the classpath.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

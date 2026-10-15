@@ -1,0 +1,16 @@
+# Accepted vulnerability exceptions for the OSV-Scanner CI job.
+# Every entry needs a reason, an owner-reviewable justification and an expiry date;
+# the scan fails again automatically after `ignoreUntil`. See DECISIONS.md, ADR-004.
+
+# Spring Framework 6.2.x is out of OSS support; fixes ship only in 7.0.9+ (Boot 4).
+# Neither vulnerable feature is used: no SSE fragment rendering, no XsltView.
+# Guarded by a Checkstyle IllegalImport rule on org.springframework.web.servlet.view.xslt.
+[[IgnoredVulns]]
+id = "GHSA-j9f9-w8pj-32f8" # CVE-2026-47890 — SSE stream corruption rendering fragments
+ignoreUntil = 2027-01-15T00:00:00Z
+reason = "Feature not used (no SseEmitter/ServerSentEvent fragment rendering). Remove on Spring Framework 7.0.9+ (Boot 4 migration)."
+
+[[IgnoredVulns]]
+id = "GHSA-pc63-qcmh-9cmg" # CVE-2026-47884 — XsltView path limitation
+ignoreUntil = 2027-01-15T00:00:00Z
+reason = "XsltView not used; its import is banned by Checkstyle. Remove on Spring Framework 7.0.9+ (Boot 4 migration)."

@@ -1,0 +1,321 @@
+openapi: 3.1.0
+info:
+  title: URL Shortener API
+  version: 1.0.0
+  summary: Create short links, redirect, and read click analytics.
+  description: |
+    Contract-first: this file is the source of truth. Java interfaces and models are
+    generated from it at build time, and MockMvc tests validate real traffic against it.
+    Requirement IDs (`SHORT-0xx`) refer to [requirements.md](requirements.md).
+
+    All errors are RFC 9457 `application/problem+json`.
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+  contact:
+    name: Agentic SDLC team
+servers:
+  - url: /
+    description: Same origin as the shortener service (http://localhost:8081 locally).
+tags:
+  - name: Urls
+    description: Create links and read their stats.
+  - name: Redirect
+    description: Resolve a short code to its long URL.
+
+# The shortener is intentionally unauthenticated in the prototype (requirements A5 / Q1).
+security: []
+
+paths:
+  /api/v1/urls:
+    post:
+      tags: [Urls]
+      operationId: createShortUrl
+      summary: Create a short URL
+      description: |
+        Generates a 7-character Base62 code (retrying on collision, SHORT-002) or uses
+        the supplied alias (SHORT-003). The target URL must pass the SSRF guardrails
+        in SHORT-011 … SHORT-014.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUrlRequest'
+            examples:
+              generated:
+                summary: Generated code
+                value:
+                  url: https://www.example.org/docs/getting-started?ref=newsletter
+              alias:
+                summary: Custom alias with expiry
+                value:
+                  url: https://www.example.org/launch
+                  alias: launch-2026
+                  expiresAt: '2026-12-31T23:59:59Z'
+      responses:
+        '201':
+          description: Short URL created.
+          headers:
+            Location:
+              description: URL of the new link's stats resource.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UrlResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/urls/{code}/stats:
+    get:
+      tags: [Urls]
+      operationId: getUrlStats
+      summary: Get click statistics for a short URL
+      description: Available for expired links too (assumption A4).
+      parameters:
+        - $ref: '#/components/parameters/Code'
+      responses:
+        '200':
+          description: Link statistics.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UrlStats'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /{code}:
+    get:
+      tags: [Redirect]
+      operationId: redirect
+      summary: Redirect to the long URL
+      description: |
+        Responds `302 Found` and records one click with its referrer (SHORT-006, SHORT-007).
+        `Cache-Control: no-store` keeps browsers from bypassing the service on repeat visits.
+      parameters:
+        - $ref: '#/components/parameters/Code'
+        - name: Referer
+          in: header
+          required: false
+          description: Recorded with the click; truncated to 2048 characters.
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the long URL.
+          headers:
+            Location:
+              description: The long URL.
+              required: true
+              schema:
+                type: string
+                format: uri
+            Cache-Control:
+              description: Always `no-store`.
+              schema:
+                type: string
+                const: no-store
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+
+components:
+  parameters:
+    Code:
+      name: code
+      in: path
+      required: true
+      description: Generated Base62 code or custom alias.
+      schema:
+        $ref: '#/components/schemas/Code'
+
+  schemas:
+    Code:
+      type: string
+      description: Generated Base62 code (7 chars) or custom alias.
+      pattern: '^[A-Za-z0-9_-]{3,32}$'
+      examples: [aZ3kP9q, launch-2026]
+
+    CreateUrlRequest:
+      type: object
+      additionalProperties: false
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          minLength: 1
+          maxLength: 2048
+          description: Absolute http(s) URL to shorten (SHORT-011 … SHORT-015).
+          examples: [https://www.example.org/docs/getting-started]
+        alias:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{3,32}$'
+          description: Optional custom code (SHORT-003). Reserved words are rejected.
+          examples: [launch-2026]
+        expiresAt:
+          type: string
+          format: date-time
+          description: Optional expiry; must be in the future (SHORT-004).
+
+    UrlResponse:
+      type: object
+      additionalProperties: false
+      required: [code, shortUrl, longUrl, createdAt]
+      properties:
+        code:
+          $ref: '#/components/schemas/Code'
+        shortUrl:
+          type: string
+          format: uri
+          examples: [http://localhost:8081/aZ3kP9q]
+        longUrl:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          description: Omitted when the link never expires.
+
+    UrlStats:
+      type: object
+      additionalProperties: false
+      required: [code, longUrl, createdAt, expired, totalClicks, topReferrers]
+      properties:
+        code:
+          $ref: '#/components/schemas/Code'
+        longUrl:
+          type: string
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        expired:
+          type: boolean
+        totalClicks:
+          type: integer
+          format: int64
+          minimum: 0
+        lastClickedAt:
+          type: string
+          format: date-time
+          description: Omitted when the link has never been clicked.
+        topReferrers:
+          type: array
+          maxItems: 10
+          description: Up to 10 referrers by click count, descending. No referrer is reported as `(direct)`.
+          items:
+            $ref: '#/components/schemas/ReferrerCount'
+
+    ReferrerCount:
+      type: object
+      additionalProperties: false
+      required: [referrer, clicks]
+      properties:
+        referrer:
+          type: string
+          examples: [https://news.example.com/, (direct)]
+        clicks:
+          type: integer
+          format: int64
+          minimum: 1
+
+    ProblemDetail:
+      type: object
+      description: RFC 9457 problem details. Extension members are allowed.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          default: about:blank
+          examples: [https://agentic.local/problems/validation]
+        title:
+          type: string
+          examples: [Invalid request]
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        errors:
+          type: array
+          description: Field-level validation errors (400 only).
+          items:
+            $ref: '#/components/schemas/FieldError'
+      additionalProperties: true
+
+    FieldError:
+      type: object
+      additionalProperties: false
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          examples: [url]
+        message:
+          type: string
+          examples: [host resolves to a private address]
+
+  responses:
+    BadRequest:
+      description: Validation failed (SHORT-003, SHORT-004, SHORT-011 … SHORT-015).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: https://agentic.local/problems/validation
+            title: Invalid request
+            status: 400
+            detail: One or more fields are invalid.
+            instance: /api/v1/urls
+            errors:
+              - field: url
+                message: host resolves to a private address
+    NotFound:
+      description: No link with this code (SHORT-008).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Conflict:
+      description: Alias already taken (SHORT-003).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Gone:
+      description: Link has expired (SHORT-009).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    ServiceUnavailable:
+      description: Could not allocate a unique code after 5 attempts (SHORT-002).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'

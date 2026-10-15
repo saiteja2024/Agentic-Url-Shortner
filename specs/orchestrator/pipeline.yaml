@@ -1,0 +1,101 @@
+# SDLC pipeline definition — loaded by the orchestrator's DagEngine (Day 1, "DAG engine").
+# PLACEHOLDER: the shape is agreed; field semantics are finalised when the engine lands.
+#
+# Each stage becomes a DAG node. `dependsOn` edges are topologically sorted (Kahn);
+# stages whose dependencies are all DONE run in parallel and re-join at a barrier.
+# Entry gates must pass before a stage starts; exit gates before its output is accepted.
+# A gate failure is retried (bounded) with the failure fed back to the agent, then
+# escalated to a human. When an input's content_hash changes, every downstream stage
+# is marked STALE and re-run.
+
+apiVersion: agentic.io/v1alpha1
+kind: Pipeline
+metadata:
+  name: sdlc-default
+  version: 0.1.0
+
+defaults:
+  retries:
+    maxAttempts: 3          # then escalate to a human (WAITING_APPROVAL)
+    feedbackToPrompt: true
+  timeout: PT10M
+  onExhausted: escalate     # escalate | rollback | fail
+
+# Reusable gate definitions, referenced by id from stages.
+gates:
+  spec-lint:          { type: command, run: "npx @redocly/cli lint" }
+  requirements-ids:   { type: check,   description: "Every requirement has a stable ID and Given/When/Then criteria" }
+  clarifications:     { type: check,   description: "No open blocking questions; assumptions recorded" }
+  compile:            { type: command, run: "./mvnw -B -q -DskipTests compile" }
+  tests-pass:         { type: command, run: "./mvnw -B verify" }
+  coverage:           { type: jacoco,  minLine: 0.80, minBranch: 0.70 }
+  traceability:       { type: command, run: "python3 scripts/traceability.py" }
+  allowed-paths:      { type: policy,  description: "Agent edits only paths declared by the stage" }
+  secret-scan:        { type: policy,  description: "No credentials or keys in the diff" }
+  human-approval:     { type: approval, description: "Human approves before continuing" }
+
+# Changes that always require human approval, whatever stage produces them.
+approvalPolicy:
+  - id: schema-change
+    match: ["**/db/migration/**", "specs/**/openapi.yaml"]
+  - id: new-dependency
+    match: ["**/pom.xml"]
+  - id: security-sensitive
+    match: ["**/security/**", "**/*Security*.java", ".github/workflows/**"]
+  - id: merge
+    match: ["action:merge"]
+
+stages:
+  - id: requirements
+    agent: RequirementsAgent
+    dependsOn: []
+    inputs: [user-request]
+    outputs: [specs/**/requirements.md]
+    entryGates: []
+    exitGates: [requirements-ids, clarifications]
+
+  - id: impact-analysis
+    agent: ImpactAnalysisAgent
+    description: Brownfield only — maps the change onto existing modules, APIs and data flows.
+    when: brownfield
+    dependsOn: [requirements]
+    outputs: [docs/impact-analysis.md]
+    exitGates: []
+
+  - id: design
+    agent: DesignAgent
+    dependsOn: [requirements, impact-analysis]
+    outputs: [specs/**/openapi.yaml, docs/design.md]
+    exitGates: [spec-lint, human-approval]
+
+  - id: implement
+    agent: ImplementAgent
+    dependsOn: [design]
+    allowedPaths: ["*/src/main/**", "*/src/main/resources/db/migration/**"]
+    exitGates: [compile, allowed-paths, secret-scan]
+
+  # test-plan runs in parallel with implement: both depend only on design.
+  - id: test-plan
+    agent: TestPlanAgent
+    dependsOn: [design]
+    outputs: [docs/test-plan.md]
+    exitGates: []
+
+  - id: test
+    agent: TestAgent
+    dependsOn: [implement, test-plan]   # join barrier
+    allowedPaths: ["*/src/test/**"]
+    exitGates: [tests-pass, coverage, traceability, allowed-paths, secret-scan]
+
+  # docs and release-readiness work run after tests; docs is independent of release prep.
+  - id: docs
+    agent: DocsAgent
+    dependsOn: [test]
+    allowedPaths: ["docs/**", "README.md"]
+    exitGates: [allowed-paths]
+
+  - id: release
+    agent: ReleaseAgent
+    dependsOn: [test, docs]
+    outputs: [docs/release-notes.md]
+    exitGates: [human-approval]       # merge approval

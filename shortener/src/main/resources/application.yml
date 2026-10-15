@@ -1,0 +1,30 @@
+server:
+  port: ${SERVER_PORT:8081}
+  shutdown: graceful
+
+spring:
+  application:
+    name: shortener
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+# Contract-first: Swagger UI renders the hand-written spec (copied from specs/shortener
+# at build time). springdoc's UI needs its api-docs endpoint for /swagger-config, so it
+# stays on but scans nothing and moves off /v3/api-docs: the spec can't trail the code
+# because the code never produces one.
+springdoc:
+  api-docs:
+    path: /openapi/springdoc
+  paths-to-exclude: /**
+  swagger-ui:
+    url: /openapi/openapi.yaml

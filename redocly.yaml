@@ -1,0 +1,16 @@
+# Redocly CLI config for `npx @redocly/cli@<pinned> lint` (see .github/workflows/ci.yml).
+extends:
+  - recommended
+
+apis:
+  shortener@v1:
+    root: specs/shortener/openapi.yaml
+
+rules:
+  # Every operation must document its failure modes and identify itself.
+  operation-4xx-response: error
+  operation-operationId: error
+  operation-summary: error
+  no-unused-components: error
+  # Public endpoints are declared explicitly with `security: []`.
+  security-defined: error

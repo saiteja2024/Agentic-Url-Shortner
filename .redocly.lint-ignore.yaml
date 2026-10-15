@@ -1,0 +1,5 @@
+# Accepted lint exceptions. Each entry needs a reason; review when the spec changes.
+specs/shortener/openapi.yaml:
+  operation-2xx-response:
+    # GET /{code} is a redirect endpoint: 302 is its success response by design (SHORT-006).
+    - '#/paths/~1{code}/get/responses'
