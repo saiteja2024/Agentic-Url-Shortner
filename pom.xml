@@ -46,6 +46,7 @@
         <otel-logback-appender.version>2.15.0-alpha</otel-logback-appender.version>
         <anthropic-java.version>2.66.0</anthropic-java.version>
         <swagger-request-validator.version>2.46.1</swagger-request-validator.version>
+        <resilience4j.version>2.3.0</resilience4j.version>
 
         <spotless.version>2.46.1</spotless.version>
         <palantir-java-format.version>2.74.0</palantir-java-format.version>
@@ -84,6 +85,11 @@
                 <groupId>com.anthropic</groupId>
                 <artifactId>anthropic-java</artifactId>
                 <version>${anthropic-java.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-spring-boot3</artifactId>
+                <version>${resilience4j.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.atlassian.oai</groupId>

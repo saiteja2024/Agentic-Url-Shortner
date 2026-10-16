@@ -8,7 +8,8 @@ info:
     (`ORCH-0xx`) refer to [requirements.md](requirements.md).
 
     Reads are open so the UI and dashboards can show progress; every mutation requires the
-    `X-API-Key` header (ORCH-037). All errors are RFC 9457 `application/problem+json`.
+    `X-API-Key` header (ORCH-037) or an OAuth2 JWT bearer token with the operation's scope
+    (`runs:write` or `approvals:write`, ORCH-038). All errors are RFC 9457 `application/problem+json`.
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
@@ -50,6 +51,7 @@ paths:
       summary: Start a run
       security:
         - apiKey: []
+        - bearerAuth: [runs:write]
       requestBody:
         required: true
         content:
@@ -73,6 +75,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /api/v1/runs/{runId}:
     get:
@@ -98,6 +102,7 @@ paths:
       summary: Kill switch — stop a run (ORCH-035)
       security:
         - apiKey: []
+        - bearerAuth: [runs:write]
       parameters:
         - $ref: '#/components/parameters/RunId'
       requestBody:
@@ -117,6 +122,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -129,6 +136,7 @@ paths:
       summary: Re-execute a node with new input; re-run only what changed (ORCH-036)
       security:
         - apiKey: []
+        - bearerAuth: [runs:write]
       parameters:
         - $ref: '#/components/parameters/RunId'
         - $ref: '#/components/parameters/NodeId'
@@ -149,6 +157,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -180,6 +190,7 @@ paths:
       summary: Approve a waiting node
       security:
         - apiKey: []
+        - bearerAuth: [approvals:write]
       parameters:
         - $ref: '#/components/parameters/RunId'
         - $ref: '#/components/parameters/NodeId'
@@ -200,6 +211,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -212,6 +225,7 @@ paths:
       summary: Reject a waiting node (rolls back its changes)
       security:
         - apiKey: []
+        - bearerAuth: [approvals:write]
       parameters:
         - $ref: '#/components/parameters/RunId'
         - $ref: '#/components/parameters/NodeId'
@@ -232,6 +246,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -244,6 +260,7 @@ paths:
       summary: Answer clarifying questions (ORCH-034)
       security:
         - apiKey: []
+        - bearerAuth: [approvals:write]
       parameters:
         - $ref: '#/components/parameters/RunId'
         - $ref: '#/components/parameters/NodeId'
@@ -264,6 +281,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -311,6 +330,13 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        OAuth2 access token (JWT) from the configured issuer (ORCH-038). Scopes come from the
+        `scope` or `scp` claim: `runs:write` for runs, `approvals:write` for human decisions.
 
   parameters:
     RunId:
@@ -791,7 +817,18 @@ components:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
     Unauthorized:
-      description: Missing or wrong X-API-Key (ORCH-037).
+      description: Missing or wrong X-API-Key, or a missing, invalid or expired bearer token (ORCH-037, ORCH-038).
+      headers:
+        WWW-Authenticate:
+          description: '`Bearer` challenge, with `error="invalid_token"` when a token was rejected.'
+          schema:
+            type: string
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Forbidden:
+      description: Valid bearer token without the scope this operation needs (ORCH-038).
       content:
         application/problem+json:
           schema:

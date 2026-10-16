@@ -54,13 +54,13 @@ class RunsController implements RunsApi {
 
     @Override
     public ResponseEntity<RunDetail> killRun(UUID runId, KillRequest request) {
-        runs.require(runId).stop(request.getBy(), request.getReason());
+        runs.require(runId).stop(Deciders.resolve(request.getBy()), request.getReason());
         return ResponseEntity.ok(queries.detail(runId));
     }
 
     @Override
     public ResponseEntity<RunDetail> replanNode(UUID runId, String nodeId, ReplanRequest request) {
-        runs.require(runId).replan(nodeId, request.getBy(), request.getInput());
+        runs.require(runId).replan(nodeId, Deciders.resolve(request.getBy()), request.getInput());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(queries.detail(runId));
     }
 }

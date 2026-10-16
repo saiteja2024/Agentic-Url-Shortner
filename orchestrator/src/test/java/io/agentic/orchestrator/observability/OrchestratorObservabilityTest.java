@@ -67,6 +67,17 @@ class OrchestratorObservabilityTest {
     }
 
     @Test
+    @Tag("ORCH-023")
+    @DisplayName("ORCH-023: the LLM circuit breaker and retry export their state to Prometheus")
+    void resilienceMetrics() throws Exception {
+        mockMvc.perform(get("/actuator/prometheus"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("resilience4j_circuitbreaker_state{")))
+                .andExpect(content().string(containsString("name=\"llm\"")))
+                .andExpect(content().string(containsString("resilience4j_retry_calls_total{")));
+    }
+
+    @Test
     @Tag("OBS-003")
     @DisplayName("OBS-003: logs are JSON lines carrying traceId and spanId inside a span")
     void jsonLogsCarryTraceIds(CapturedOutput output) {

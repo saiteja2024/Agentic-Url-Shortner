@@ -148,6 +148,16 @@ Status: Implemented
 - **Then** the target project is copied into `workspaces/<runId>`, initialised as a git repository on `main`, and the run works on branch `run/<runId>`
 - **And** each successful node commits its changes, so every node has a checkpoint to roll back to
 
+### ORCH-023 — Resilient model calls: retry and circuit breaker
+Status: Implemented
+
+- **Given** any `LlmClient` (mock or Claude), wrapped by Resilience4j instances named `llm`
+- **When** a call fails with a transient error (I/O error, HTTP 429 or 5xx, surfaced as `LlmUnavailableException`)
+- **Then** it is retried with exponential backoff up to `resilience4j.retry.instances.llm.max-attempts` (3) times in total
+- **And** when the failure rate over the sliding window reaches the threshold, the circuit opens and further calls fail fast with `LlmUnavailableException` without reaching the model, until the open-state wait elapses and trial calls succeed
+- **And** non-transient errors (bad request, refusal, missing recording) are neither retried nor counted as circuit failures
+- **And** the breaker state and retry counts are exported as `resilience4j_circuitbreaker_*` / `resilience4j_retry_*` metrics, and an alert fires while the circuit is open
+
 ## Governance
 
 ### ORCH-030 — Exit gates: compile, tests, coverage, allowed paths, secrets
@@ -206,7 +216,17 @@ Status: Implemented
 
 - **Given** the HTTP API (`openapi.yaml`)
 - **Then** `GET /api/v1/runs/{id}/approvals` lists waiting nodes with their reasons or questions, and `POST …/approve`, `…/reject`, `…/answers` decide them
-- **And** every mutating endpoint requires `X-API-Key`; a missing or wrong key is `401` ProblemDetail and changes nothing
+- **And** every mutating endpoint requires `X-API-Key` or an OAuth2 bearer token (ORCH-038); missing or wrong credentials are `401` ProblemDetail and change nothing
+
+### ORCH-038 — OAuth2 JWT bearer tokens with scopes
+Status: Implemented
+
+- **Given** the orchestrator configured as an OAuth2 resource server (`orchestrator.security.jwt.issuer-uri`, `jwk-set-uri`, or `hmac-secret` for local development)
+- **When** a mutating request carries `Authorization: Bearer <JWT>`
+- **Then** the signature, expiry (`exp`/`nbf`) and, when configured, issuer and audience are validated; an invalid token is `401` with `WWW-Authenticate: Bearer`
+- **And** starting, stopping and re-planning runs need scope `runs:write`; approving, rejecting and answering need scope `approvals:write`; a valid token without the scope is `403` ProblemDetail and changes nothing
+- **And** a decision made with a token records the token's `preferred_username` (or `sub`) as the decider, not the `by` field of the request body
+- **And** the `X-API-Key` keeps working with both scopes, so the console and scripts are unchanged
 
 ## Metrics, tracing and reporting
 

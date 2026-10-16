@@ -5,6 +5,9 @@ server:
 spring:
   application:
     name: orchestrator
+  # Authentication is the API key or a JWT (ORCH-037, ORCH-038); no generated default user.
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   # Running from the repo root or the module dir, pick up the same .env docker-compose uses.
   config:
     import: optional:file:.env[.properties],optional:file:../.env[.properties]
@@ -33,6 +36,14 @@ orchestrator:
   max-parallel-nodes: 4
   # Shared secret for every mutating endpoint (X-API-Key). Empty = mutations refused (fail closed).
   api-key: ${ORCHESTRATOR_API_KEY:}
+  # ORCH-038: OAuth2 bearer tokens. Set issuer-uri (OIDC discovery) or jwk-set-uri for a real
+  # identity provider, or hmac-secret (>= 32 bytes, HS256) for local development. All empty = JWT off.
+  security:
+    jwt:
+      issuer-uri: ${ORCHESTRATOR_JWT_ISSUER_URI:}
+      jwk-set-uri: ${ORCHESTRATOR_JWT_JWK_SET_URI:}
+      hmac-secret: ${ORCHESTRATOR_JWT_HMAC_SECRET:}
+      audience: ${ORCHESTRATOR_JWT_AUDIENCE:}
   workspaces-dir: ${ORCHESTRATOR_WORKSPACES_DIR:workspaces}
   target-project: ${ORCHESTRATOR_TARGET_PROJECT:scenarios/seed/linkkit}
   command-timeout: 5m
@@ -43,6 +54,31 @@ orchestrator:
     model: claude-opus-5-5
     api-key: ${ANTHROPIC_API_KEY:}
     recordings: llm-recordings
+
+# ORCH-023: transient model failures are retried with backoff; a run of them opens the circuit
+# so agents fail fast instead of piling up on a dead endpoint. Metrics: resilience4j_*.
+resilience4j:
+  circuitbreaker:
+    instances:
+      llm:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        automatic-transition-from-open-to-half-open-enabled: true
+        permitted-number-of-calls-in-half-open-state: 2
+        record-exceptions:
+          - io.agentic.orchestrator.agent.LlmUnavailableException
+  retry:
+    instances:
+      llm:
+        max-attempts: 3
+        wait-duration: 2s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - io.agentic.orchestrator.agent.LlmUnavailableException
 
 management:
   endpoints:

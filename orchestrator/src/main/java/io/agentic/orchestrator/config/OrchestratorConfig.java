@@ -4,12 +4,15 @@ import io.agentic.orchestrator.agent.AgentCatalog;
 import io.agentic.orchestrator.agent.ClaudeLlmClient;
 import io.agentic.orchestrator.agent.LlmClient;
 import io.agentic.orchestrator.agent.MockLlmClient;
+import io.agentic.orchestrator.agent.ResilientLlmClient;
 import io.agentic.orchestrator.dag.AgentRegistry;
 import io.agentic.orchestrator.dag.DagEngine;
 import io.agentic.orchestrator.gate.BuiltInGates;
 import io.agentic.orchestrator.gate.GateRegistry;
 import io.agentic.orchestrator.pipeline.PipelineDefinition;
 import io.agentic.orchestrator.pipeline.PipelineLoader;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.RetryRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
 import java.io.IOException;
@@ -44,10 +47,16 @@ class OrchestratorConfig {
         }
     }
 
-    /** ORCH-020: mock by default; {@code claude} needs an API key and fails fast without one. */
+    /**
+     * ORCH-020: mock by default; {@code claude} needs an API key and fails fast without one.
+     * ORCH-023: either way, calls go through the {@code llm} retry and circuit breaker.
+     */
     @Bean
-    LlmClient llmClient(OrchestratorProperties properties) {
-        OrchestratorProperties.Llm llm = properties.llm();
+    LlmClient llmClient(OrchestratorProperties properties, CircuitBreakerRegistry breakers, RetryRegistry retries) {
+        return new ResilientLlmClient(model(properties.llm()), breakers.circuitBreaker("llm"), retries.retry("llm"));
+    }
+
+    private static LlmClient model(OrchestratorProperties.Llm llm) {
         return switch (llm.mode()) {
             case "mock" -> new MockLlmClient(llm.recordings());
             case "claude" -> {
