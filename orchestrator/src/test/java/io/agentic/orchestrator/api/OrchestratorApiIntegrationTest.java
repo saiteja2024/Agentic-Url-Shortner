@@ -12,9 +12,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import io.agentic.orchestrator.support.TestcontainersConfiguration;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -38,11 +47,13 @@ import org.springframework.test.web.servlet.ResultActions;
 class OrchestratorApiIntegrationTest {
 
     private static final String KEY = "test-api-key";
+    private static final String JWT_SECRET = "test-hmac-secret-of-at-least-32-bytes!";
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) throws Exception {
         Path workspaces = Files.createTempDirectory("workspaces");
         registry.add("orchestrator.api-key", () -> KEY);
+        registry.add("orchestrator.security.jwt.hmac-secret", () -> JWT_SECRET);
         registry.add("orchestrator.workspaces-dir", workspaces::toString);
         registry.add("orchestrator.target-project", () -> Path.of("../scenarios/seed/linkkit")
                 .toAbsolutePath()
@@ -61,6 +72,41 @@ class OrchestratorApiIntegrationTest {
             request.header("X-API-Key", key);
         }
         return mvc.perform(request);
+    }
+
+    private ResultActions postBearer(String path, String body, String token) throws Exception {
+        return mvc.perform(post(path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .header("Authorization", "Bearer " + token));
+    }
+
+    private static String token(String user, String scope, Duration validFor, String secret) throws Exception {
+        Instant now = Instant.now();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("user-" + user)
+                .claim("preferred_username", user)
+                .claim("scope", scope)
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(now.plus(validFor)))
+                .build();
+        SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
+        jwt.sign(new MACSigner(secret.getBytes(StandardCharsets.UTF_8)));
+        return jwt.serialize();
+    }
+
+    private static String token(String user, String scope) throws Exception {
+        return token(user, scope, Duration.ofMinutes(5), JWT_SECRET);
+    }
+
+    private int runCount() throws Exception {
+        return ((List<?>) JsonPath.read(
+                        mvc.perform(get("/api/v1/runs"))
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString(),
+                        "$"))
+                .size();
     }
 
     private String start(String scenario, String mode, String request) throws Exception {
@@ -164,6 +210,84 @@ class OrchestratorApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(conformsToSpec())
                 .andExpect(jsonPath("$.length()").value(before));
+    }
+
+    @Test
+    @Tag("ORCH-038")
+    @DisplayName("ORCH-038: a bearer token with runs:write starts and stops a run")
+    void bearerTokenWithScope() throws Exception {
+        String runs = token("ops-bot", "runs:write");
+        String body = postBearer(
+                        "/api/v1/runs", "{\"scenario\":\"greenfield\",\"mode\":\"GREENFIELD\",\"request\":\"x\"}", runs)
+                .andExpect(status().isAccepted())
+                .andExpect(conformsToSpec())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String id = JsonPath.read(body, "$.id");
+
+        postBearer("/api/v1/runs/" + id + "/kill", "{\"by\":\"ignored\",\"reason\":\"jwt test\"}", runs)
+                .andExpect(status().isOk())
+                .andExpect(conformsToSpec());
+        awaitRun(id, "CANCELLED");
+    }
+
+    @Test
+    @Tag("ORCH-038")
+    @DisplayName("ORCH-038: a valid token without the operation's scope is 403 and changes nothing")
+    void missingScopeIsForbidden() throws Exception {
+        int before = runCount();
+
+        postBearer(
+                        "/api/v1/runs",
+                        "{\"scenario\":\"greenfield\",\"mode\":\"GREENFIELD\",\"request\":\"x\"}",
+                        token("reviewer", "approvals:write"))
+                .andExpect(status().isForbidden())
+                .andExpect(responseConformsToSpec())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+
+        assertThat(runCount()).isEqualTo(before);
+    }
+
+    @Test
+    @Tag("ORCH-038")
+    @DisplayName("ORCH-038: expired, wrongly signed or malformed tokens are 401 with a Bearer challenge")
+    void invalidTokensAreUnauthorized() throws Exception {
+        String body = "{\"scenario\":\"greenfield\",\"mode\":\"GREENFIELD\",\"request\":\"x\"}";
+        int before = runCount();
+        List<String> tokens = List.of(
+                token("late", "runs:write", Duration.ofMinutes(-10), JWT_SECRET),
+                token("forger", "runs:write", Duration.ofMinutes(5), "another-secret-also-32-bytes-long!!"),
+                "not-a-jwt");
+
+        for (String bad : tokens) {
+            postBearer("/api/v1/runs", body, bad)
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(responseConformsToSpec())
+                    .andExpect(header().string("WWW-Authenticate", containsString("Bearer")))
+                    .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+        }
+        assertThat(runCount()).isEqualTo(before);
+    }
+
+    @Test
+    @Tag("ORCH-038")
+    @DisplayName("ORCH-038: a decision made with a token records the token's user, not the body's `by`")
+    void approverComesFromToken() throws Exception {
+        String id = start("greenfield", "GREENFIELD", "Add click analytics");
+        awaitNode(id, "design", "WAITING_APPROVAL");
+
+        postBearer(
+                        "/api/v1/runs/" + id + "/nodes/design/approve",
+                        "{\"by\":\"someone-else\"}",
+                        token("alice", "approvals:write"))
+                .andExpect(status().isOk())
+                .andExpect(conformsToSpec());
+        postJson("/api/v1/runs/" + id + "/kill", "{\"by\":\"sai\",\"reason\":\"done\"}", KEY)
+                .andExpect(status().isOk());
+
+        assertThat(JsonPath.<List<String>>read(report(id), "$.approvals[?(@.nodeId == 'design')].by"))
+                .containsExactly("alice");
     }
 
     @Test

@@ -122,6 +122,20 @@ health = dashboard("service-health", "Service Health",
           [('sum by (application) (jvm_memory_used_bytes{area="heap"})', "{{application}}")], 8, 13, 8, 8, unit="bytes"),
     panel("timeseries", "DB connections in use",
           [("sum by (application) (hikaricp_connections_active)", "{{application}}")], 16, 13, 8, 8),
+    panel("stat", "LLM circuit breaker",
+          ['max(resilience4j_circuitbreaker_state{name="llm", state=~"open|forced_open"}) * 2 '
+           '+ max(resilience4j_circuitbreaker_state{name="llm", state="half_open"})'],
+          0, 21, 6, 6,
+          thresholds={"mode": "absolute", "steps": [{"color": "green", "value": None}, {"color": "orange", "value": 1},
+                                                    {"color": "red", "value": 2}]},
+          description="ORCH-023. 0 = closed (calls flow), 1 = half-open (trial calls), 2 = open (failing fast)."),
+    panel("timeseries", "LLM calls through the breaker",
+          [('sum by (kind) (rate(resilience4j_circuitbreaker_calls_seconds_count{name="llm"}[5m]))', "{{kind}}"),
+           ('sum(rate(resilience4j_circuitbreaker_not_permitted_calls_total{name="llm"}[5m]))', "rejected (open)")],
+          6, 21, 9, 6, unit="reqps"),
+    panel("timeseries", "LLM retries by outcome",
+          [('sum by (kind) (rate(resilience4j_retry_calls_total{name="llm"}[5m]))', "{{kind}}")],
+          15, 21, 9, 6, unit="reqps"),
 ])
 
 OUT.mkdir(exist_ok=True)

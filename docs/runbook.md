@@ -8,6 +8,17 @@ header box once.
 export KEY=$(grep ^ORCHESTRATOR_API_KEY= .env | cut -d= -f2-)
 ```
 
+Or use an OAuth2 bearer token instead of the key (ORCH-038). Locally, set
+`ORCHESTRATOR_JWT_HMAC_SECRET` in `.env` and mint one; the token's user is recorded as the
+decider. Scopes: `runs:write` (start, kill, re-plan) and `approvals:write` (approve, reject, answer).
+
+```bash
+export TOKEN=$(python3 scripts/mint_dev_jwt.py --user alice --scope "runs:write approvals:write")
+```
+
+Then send `-H "Authorization: Bearer $TOKEN"` in place of `-H "X-API-Key: $KEY"`. A token
+without the scope gets `403`; an expired or forged one gets `401`.
+
 ## Start a run
 
 ```bash
@@ -93,6 +104,7 @@ from the log too. The log can't be edited: `UPDATE`, `DELETE` and `TRUNCATE` on
 | `OrchestratorRunSuccessRateLow` | Governance dashboard → gate failures by gate | A gate keeps failing (a broken seed build, a missing recording) |
 | `OrchestratorRollbackSpike` | Console → runs waiting with `ESCALATION` | Agents can't satisfy a gate within 3 attempts; needs a human fix |
 | `ServiceP95LatencyHigh` | Service Health → p95 by service, then traces in OpenObserve | Slow DB, or slow DNS for the shortener's SSRF check |
+| `LlmCircuitBreakerOpen` | Service Health → LLM circuit breaker, calls and retries; orchestrator logs for `LlmUnavailableException` | Model API outage, rate limiting or a bad network path. Calls fail fast; the breaker retries on its own after 30 s. Pause new runs until it closes |
 
 ## Reset the environment
 

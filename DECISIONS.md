@@ -297,3 +297,54 @@ per-node loop inside `runNode` rather than graph surgery, which keeps governance
 feedback changes the prompt, not the recorded reply. The brownfield scenario's recordings are
 written so that the retry visibly succeeds on attempt 2. The real-model path is exercised only
 manually.
+
+## ADR-010 — OAuth2 JWT resource server next to the API key
+
+**Status:** Accepted · 2026-10-15
+
+**Context.** A shared API key can't say *who* approved a design or a merge: the `by` field was
+self-declared. Enterprise operators sign in through an identity provider and expect scoped,
+short-lived tokens.
+
+**Decision.**
+- The orchestrator is a **Spring Security OAuth2 resource server**. Keys come from a JWK set
+  (`jwk-set-uri`) or OIDC discovery (`issuer-uri`) in production, or a shared HS256 secret
+  (`hmac-secret`, at least 32 bytes) for local development, minted with
+  `scripts/mint_dev_jwt.py`. Expiry is always checked; issuer and audience when configured.
+- **Least privilege through scopes**: `runs:write` (start, kill, re-plan) and `approvals:write`
+  (approve, reject, answer). A valid token without the scope is `403`; reads stay open.
+- **Identity from the token**: a decision made with a token records `preferred_username` (or
+  `sub`) as the decider and ignores the body's `by`, so approvals in the audit log are attributable.
+- **The API key stays** as a break-glass and automation credential with both scopes, so the
+  console, scripts and recorded scenarios keep working unchanged. It still fails closed.
+- Stateless (no sessions), so CSRF protection is off; 401 and 403 are RFC 9457 ProblemDetail
+  with a `WWW-Authenticate: Bearer` challenge.
+
+**Consequences.** Per-user identity is real when callers use tokens; the console still uses the
+key (adding an OIDC login to the console is the next step). The API-key principal is recorded
+by its self-declared `by`, as before.
+
+## ADR-011 — Resilience4j retry and circuit breaker around the model
+
+**Status:** Accepted · 2026-10-15
+
+**Context.** Every agent call goes to an external model API. Rate limits and overloads are
+normal; a hard outage would otherwise make every node spend its three attempts waiting on
+timeouts and then escalate, flooding humans with noise.
+
+**Decision.**
+- `ResilientLlmClient` wraps every `LlmClient` (mock or Claude) in Resilience4j instances named
+  `llm`: a **retry** (3 attempts, exponential backoff from 2 s) around a **circuit breaker**
+  (count window of 10, opens at 50 % failures after 5 calls, 30 s open, 2 half-open trial calls).
+- **Only transient failures count**: `ClaudeLlmClient` maps I/O errors, HTTP 429 and 5xx to
+  `LlmUnavailableException`; bad requests, refusals and missing recordings pass through untouched,
+  so they neither retry nor trip the breaker. The SDK's own retries are off, so there is one
+  retry policy, not two stacked.
+- When the circuit is open, calls fail fast with a clear message; the engine's node-level
+  retry and escalation (ORCH-032) then apply as for any agent failure.
+- Settings live in `application.yml` (`resilience4j.*`), metrics are exported through
+  Micrometer (`resilience4j_circuitbreaker_*`, `resilience4j_retry_*`), Service Health shows the
+  breaker state, and `LlmCircuitBreakerOpen` alerts after one minute open.
+
+**Consequences.** Model outages surface in a minute as one alert instead of many escalations.
+The breaker is per instance, not shared across replicas.

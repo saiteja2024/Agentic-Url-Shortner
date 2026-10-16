@@ -4,7 +4,7 @@
 
 Every requirement in `specs/` has an ID, and every test that verifies one carries the ID in its
 `@Tag` and `@DisplayName`. CI fails if an implemented requirement has no passing test
-([traceability matrix](traceability.md): 52 requirements, about 260 test cases).
+([traceability matrix](traceability.md): 54 requirements, 225 tests).
 
 | Layer | What it proves | Examples |
 |---|---|---|
@@ -31,7 +31,8 @@ for the shortener and 90 % for the orchestrator.
 | Runaway cost or time | Token and time budgets stop the run; 3-attempt cap per node; command timeout | Budgets are per run, not per tenant |
 | Approving unvetted output | Machine gates run before any approval request | Approval quality depends on the human |
 | Audit tampering | Append-only trigger plus a least-privilege role; report rebuilt from the log | The DB owner can drop the trigger (that change itself needs approval) |
-| Shared API key | Constant-time compare, fails closed when unset | Not per-user identity; `by` is self-declared |
+| Weak caller identity | OAuth2 JWTs with scopes; the decider is taken from the token. The API key (constant-time, fails closed) remains for automation | API-key callers still self-declare `by`; the console uses the key |
+| Model API outage or rate limits | Resilience4j retry with backoff and a circuit breaker on transient errors only; alert when open | Breaker state is per instance |
 | OpenAPI 3.1 generator is beta | Schema mappings and inline enums; builds verified from two path styles | New array-of-`$ref` fields need a mapping (CI catches it at compile time) |
 | Boot 3.5 has left OSS support | Patched transitive versions plus expiring OSV exceptions (ADR-004) | Needs the Boot 4 migration before production |
 | Mock LLM replays fixed answers | Makes scenarios reproducible and free | Feedback changes the prompt but not the recorded reply; real-model behaviour isn't exercised in CI |
@@ -49,12 +50,14 @@ for the shortener and 90 % for the orchestrator.
 
 ## Known limitations
 
-- **`ClaudeLlmClient` is not exercised by automated tests**: the mock is used everywhere so CI
-  stays deterministic and free. The real path is a configuration switch (`LLM_MODE=claude`).
+- **The real model is not called by automated tests**: the mock is used everywhere so CI stays
+  deterministic and free. `ClaudeLlmClient` is tested against a local stub of the Messages API
+  (success, 429, 5xx, 400, connection refused); the real path is a switch (`LLM_MODE=claude`).
 - Gates run on the host. There's no container sandbox per run, and the agent's code runs with
   the orchestrator's permissions at test time.
 - A single instance with in-memory run state; no horizontal scaling and no resume after restart.
-- Approvals are attributed to a self-declared name behind a shared key.
+- With the API key, approvals are attributed to a self-declared name; only bearer-token callers
+  get identity from the token. The console has no OIDC login yet.
 - Run-level p95 needs more traffic than a demo produces; dashboards show node p95 and average
   run duration instead.
 - After a re-plan, a run counts as completed twice in `orchestrator_runs_completed_total`.
@@ -63,7 +66,7 @@ for the shortener and 90 % for the orchestrator.
 
 1. Migrate to Spring Boot 4 / Framework 7 and drop the CVE exceptions (ADR-004).
 2. Sandbox each run (container per workspace, no network, CPU and memory limits) and run gates inside it.
-3. Real identity: OIDC for operators, signed approvals, per-team policies and budgets.
+3. Identity: OIDC login in the console (the API already accepts JWTs), signed approvals, per-team policies and budgets.
 4. Durable execution: persist run state and resume after restart (the schema already has it), or move scheduling onto a workflow engine.
 5. Point workspaces at real repositories and open pull requests instead of merging locally.
 6. Evaluate real-model agents against a recorded eval set before switching the default off mock.

@@ -36,14 +36,14 @@ Status: Implemented
 Status: Implemented
 
 - **Given** Grafana
-- **Then** it shows **Orchestrator Overview** (success rate, active runs, run/node duration p95, MTTR, tokens), **Governance** (retries, rollbacks, gate failures, approval waits and decisions) and **Service Health** (request rate, p95 latency, 5xx ratio, shortener business metrics, JVM and DB pool) — exported as JSON in `observability/grafana/dashboards`
+- **Then** it shows **Orchestrator Overview** (success rate, active runs, run/node duration p95, MTTR, tokens), **Governance** (retries, rollbacks, gate failures, approval waits and decisions) and **Service Health** (request rate, p95 latency, 5xx ratio, shortener business metrics, JVM and DB pool, LLM circuit breaker state, calls and retries) — exported as JSON in `observability/grafana/dashboards`
 - **And** every query uses the Prometheus datasource and metrics the services actually expose
 
 ### OBS-006 — Alert rules
 Status: Implemented
 
 - **Given** Prometheus
-- **Then** three rules are loaded from `observability/prometheus/alerts.yml`: run success rate below 80 % (over at least 3 runs in 1 h), more than 2 rollbacks in 15 min, and HTTP p95 latency above 500 ms for 5 min
+- **Then** four rules are loaded from `observability/prometheus/alerts.yml`: run success rate below 80 % (over at least 3 runs in 1 h), more than 2 rollbacks in 15 min, HTTP p95 latency above 500 ms for 5 min, and the LLM circuit breaker open for 1 min (ORCH-023)
 - **And** each rule has a severity label and a summary annotation
 
 ## Assumptions

@@ -37,3 +37,13 @@ groups:
         annotations:
           summary: "p95 HTTP latency above 500 ms on {{ $labels.application }}"
           description: "p95 is {{ $value | humanizeDuration }} over 5 minutes."
+
+      - alert: LlmCircuitBreakerOpen
+        # ORCH-023: agents are failing fast because the model endpoint keeps erroring.
+        expr: max(resilience4j_circuitbreaker_state{name="llm", state=~"open|forced_open"}) == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LLM circuit breaker is open"
+          description: "Model calls are being rejected without reaching the API. Check the provider status and the Service Health dashboard; see docs/runbook.md."

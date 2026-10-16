@@ -8,11 +8,12 @@ high. Everything is recorded in an audit log nobody can rewrite.
 
 ```mermaid
 flowchart LR
-    human([Operator]) -->|console / REST + X-API-Key| api[Orchestrator API<br/>contract-first]
+    human([Operator]) -->|console / REST<br/>X-API-Key or OAuth2 JWT| api[Orchestrator API<br/>contract-first]
     api --> svc[RunService]
     svc --> engine[DagEngine / Run<br/>futures, gates, retries,<br/>approvals, budgets, re-plan]
     engine -->|NodeExecutor| agents[8 SDLC agents]
-    agents -->|LlmClient| llm{{Mock recordings<br/>or Claude API}}
+    agents -->|LlmClient| cb[Resilience4j<br/>retry + circuit breaker]
+    cb --> llm{{Mock recordings<br/>or Claude API}}
     agents -->|write files| ws[(Run workspace<br/>git branch run/&lt;id&gt;)]
     engine -->|Gate| gates[Built-in gates<br/>mvn compile/test, JaCoCo,<br/>allowed-paths, secret scan]
     gates --> ws
@@ -20,7 +21,7 @@ flowchart LR
     rec --> pg[(Postgres<br/>runs · nodes · artifacts ·<br/>events: append-only)]
     api -->|report & audit| pg
     engine -. spans .-> otel[OpenObserve<br/>traces + logs]
-    engine -. metrics .-> prom[Prometheus] --> graf[Grafana<br/>3 dashboards, 3 alerts]
+    engine -. metrics .-> prom[Prometheus] --> graf[Grafana<br/>3 dashboards, 4 alerts]
     spec[/specs/orchestrator/pipeline.yaml/] -->|loaded + validated at startup| engine
 ```
 
@@ -30,11 +31,11 @@ flowchart LR
 | DAG engine | One `CompletableFuture` per node; join barrier through `allOf(dependencies)`; failure stops only the downstream path | `dag/DagEngine`, `dag/Run` |
 | Governance | Retries with feedback, rollback, escalation, policy approvals, clarifications, kill switch, token and time budgets, re-plan | `dag/Run` |
 | Agents | Prompt from upstream artifacts, answers and the last failure; reply → files, artifact, questions, actions | `agent/LlmAgent`, `AgentCatalog` |
-| LLM | `MockLlmClient` (deterministic recordings, the default) or `ClaudeLlmClient` (official SDK) | `agent/*LlmClient` |
+| LLM | `MockLlmClient` (deterministic recordings, the default) or `ClaudeLlmClient` (official SDK), both behind a Resilience4j retry and circuit breaker that only count transient failures | `agent/*LlmClient`, `ResilientLlmClient` |
 | Workspace | Copy of the target project, git branch per run, commit per node, reset and merge | `workspace/GitWorkspace` |
 | Gates | `command`, `coverage`, `allowed-paths`, `secret-scan`, `requirements`, `approval` | `gate/BuiltInGates` |
 | Audit | Every event persisted in order; report rebuilt only from the log | `persistence/RunRecorder`, `service/RunQueries` |
-| API and UI | Contract-first REST (`specs/orchestrator/openapi.yaml`), API-key filter, operator console | `web/*`, `static/index.html` |
+| API and UI | Contract-first REST (`specs/orchestrator/openapi.yaml`); Spring Security with OAuth2 JWT scopes (`runs:write`, `approvals:write`) or the API key; operator console | `web/SecurityConfig`, `web/*`, `static/index.html` |
 
 ## The pipeline (from `specs/orchestrator/pipeline.yaml`)
 
@@ -110,7 +111,8 @@ are kept.
   failures, approval waits, recovery time (MTTR), tokens and active runs, plus HTTP and JVM
   metrics for both services.
 - **Dashboards and alerts**: Orchestrator Overview, Governance and Service Health; alerts on
-  success rate < 80 %, more than 2 rollbacks in 15 min, and p95 > 500 ms.
+  success rate < 80 %, more than 2 rollbacks in 15 min, p95 > 500 ms, and the LLM circuit
+  breaker open for a minute.
 
 ## Decisions
 
@@ -127,3 +129,5 @@ All decisions with context and consequences are in [`DECISIONS.md`](../DECISIONS
 | 007 | Shortener: JdbcClient, database as collision arbiter, browser-style SSRF parsing |
 | 008 | DAG engine: futures as scheduler, database-enforced append-only audit |
 | 009 | Agents, governance and API: mock-first LLM, git branch per run, governance in the engine |
+| 010 | OAuth2 JWT resource server with scopes, identity from the token; API key kept for automation |
+| 011 | Resilience4j retry and circuit breaker around the model, counting only transient failures |

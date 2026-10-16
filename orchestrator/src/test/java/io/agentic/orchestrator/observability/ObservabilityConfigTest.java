@@ -76,6 +76,9 @@ class ObservabilityConfigTest {
             "shortener_code_collisions_total",
             "jvm_memory_used_bytes",
             "hikaricp_connections_active",
+            "resilience4j_circuitbreaker_calls_seconds",
+            "resilience4j_circuitbreaker_not_permitted_calls_total",
+            "resilience4j_retry_calls_total",
             "up");
 
     private static final Pattern METRIC =
@@ -117,7 +120,7 @@ class ObservabilityConfigTest {
 
     @Test
     @Tag("OBS-006")
-    @DisplayName("OBS-006: three alert rules with severity and summary are loaded by Prometheus")
+    @DisplayName("OBS-006: four alert rules with severity and summary are loaded by Prometheus")
     void alertRules() throws Exception {
         JsonNode rules = yaml("observability/prometheus/alerts.yml")
                 .path("groups")
@@ -131,7 +134,11 @@ class ObservabilityConfigTest {
             assertThat(rule.path("expr").asText()).isNotBlank();
         }
         assertThat(names)
-                .containsExactly("OrchestratorRunSuccessRateLow", "OrchestratorRollbackSpike", "ServiceP95LatencyHigh");
+                .containsExactly(
+                        "OrchestratorRunSuccessRateLow",
+                        "OrchestratorRollbackSpike",
+                        "ServiceP95LatencyHigh",
+                        "LlmCircuitBreakerOpen");
         assertThat(Files.readString(ROOT.resolve("observability/prometheus/prometheus.yml")))
                 .contains("/etc/prometheus/alerts.yml");
     }

@@ -18,7 +18,8 @@ plan → test → docs → release) run as a **dependency graph** with entry/exi
 branches and a join barrier. Humans approve high-impact steps, answer clarifying questions and
 own the final merge. Failures are **retried with feedback**, then **rolled back and escalated**.
 Every state change lands in an **append-only audit log**, and the run is traced and measured
-end to end.
+end to end. Mutations are protected by **OAuth2 JWT bearer tokens with scopes** (or an API key
+for automation), and model calls go through a **Resilience4j retry and circuit breaker**.
 
 The system it builds and governs is a **URL shortener**, written contract-first in this repo
 (`shortener/`), plus a small seed project (`scenarios/seed/linkkit`) that the agents change in
@@ -56,7 +57,9 @@ git and Python 3. In `.env`, set `OTLP_AUTH_HEADER` as described there to ship t
 | OpenObserve (traces and logs) | http://localhost:5080 |
 | Prometheus (metrics, alert rules) | http://localhost:9090 |
 
-Logins and the orchestrator API key come from `.env`.
+Logins and the orchestrator API key come from `.env`. To call the API with an OAuth2 token
+instead, set `ORCHESTRATOR_JWT_HMAC_SECRET` (or a real issuer) and mint one with
+`python3 scripts/mint_dev_jwt.py --user alice` ([runbook](docs/runbook.md)).
 
 ## The three scenarios
 
@@ -78,13 +81,13 @@ Each scenario folder holds `audit-log.json` (the append-only event log), `report
 | `common/` | Content hashing and logging keys shared by both services |
 | `observability/` | Prometheus config and alert rules, Grafana provisioning and dashboards |
 | `scenarios/` | Seed project for runs, and the saved scenario evidence |
-| `scripts/` | `traceability.py` (requirement → test matrix), `run_scenarios.py` |
+| `scripts/` | `traceability.py` (requirement → test matrix), `run_scenarios.py`, `mint_dev_jwt.py` (local OAuth2 tokens) |
 | `docs/` | [Architecture](docs/architecture.md), [testing, risks and limitations](docs/testing-and-risks.md), [runbook](docs/runbook.md), [traceability](docs/traceability.md), [recording script](docs/recording-script.md) |
-| `DECISIONS.md` | ADR-001 … ADR-009 |
+| `DECISIONS.md` | ADR-001 … ADR-011 |
 
 ## Quality gates
 
-`./mvnw verify` runs Checkstyle, OpenAPI code generation, about 210 tests (unit, MockMvc with
+`./mvnw verify` runs Checkstyle, OpenAPI code generation, about 225 tests (unit, MockMvc with
 OpenAPI contract validation, Testcontainers Postgres, end-to-end scenarios), Spotless and a
 JaCoCo gate (≥ 80 % line and ≥ 70 % branch per module). CI also lints the specs, checks that
 every requirement has a passing test (`scripts/traceability.py`), and scans dependencies (OSV,
